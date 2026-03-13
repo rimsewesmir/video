@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pro Video Editor V2</title>
+    <title>Pro Video Editor V4.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
@@ -48,6 +48,10 @@
         .resizer-y:hover, .resizer-y:active { background-color: var(--accent); }
 
         .modal-bg { background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+
+        details > summary { list-style: none; cursor: pointer; }
+        details > summary::-webkit-details-marker { display: none; }
+        details[open] summary i.ph-caret-right { transform: rotate(90deg); }
     </style>
 </head>
 <body class="flex flex-col h-screen select-none text-sm">
@@ -55,24 +59,28 @@
     <header class="h-14 bg-[#1a1d24] border-b border-[#272a33] flex items-center justify-between px-4 shrink-0 z-50">
         <div class="flex items-center gap-3">
             <i class="ph-fill ph-video-camera text-indigo-500 text-2xl"></i>
-            <h1 class="font-semibold text-lg tracking-wide">WebEdit Pro V2</h1>
+            <h1 class="font-semibold text-lg tracking-wide">WebEdit Pro V4.1</h1>
             <div class="h-6 w-px bg-gray-700 mx-2"></div>
             <button onclick="openSettings()" class="text-gray-400 hover:text-white flex items-center gap-1 transition">
                 <i class="ph ph-gear"></i> Nastavení
             </button>
         </div>
         <div class="flex items-center gap-3">
+            <button onclick="addTextClip()" class="bg-[#272a33] hover:bg-[#374151] text-white px-4 py-2 rounded-md flex items-center gap-2 transition">
+                <i class="ph ph-text-t"></i> Přidat text
+            </button>
             <button onclick="document.getElementById('fileInput').click()" class="bg-[#272a33] hover:bg-[#374151] text-white px-4 py-2 rounded-md flex items-center gap-2 transition">
                 <i class="ph ph-upload-simple"></i> Přidat média
             </button>
             <input type="file" id="fileInput" multiple accept="video/*,audio/*,image/*" class="hidden" onchange="handleFiles(event)">
             <button onclick="startExport()" id="exportBtn" class="bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-2 rounded-md flex items-center gap-2 font-medium transition shadow-lg shadow-indigo-500/20">
-                <i class="ph ph-export"></i> Exportovat Video
+                <i class="ph ph-export"></i> Exportovat
             </button>
         </div>
     </header>
 
     <div id="top-workspace" class="flex flex-1 overflow-hidden min-h-[200px]">
+        
         <main id="preview-area" class="flex-1 flex flex-col bg-[#0f1115] relative p-4 items-center justify-center overflow-hidden min-w-[300px]">
             <div id="canvas-container" class="relative bg-black rounded-lg shadow-2xl ring-1 ring-[#272a33] flex items-center justify-center" style="max-height: 100%; max-width: 100%; aspect-ratio: 16/9;">
                 <canvas id="preview-canvas" width="1920" height="1080" class="w-full h-full object-contain"></canvas>
@@ -80,7 +88,7 @@
                 <div id="export-overlay" class="absolute inset-0 bg-black/90 hidden flex-col items-center justify-center z-50 backdrop-blur-md rounded-lg">
                     <i class="ph ph-spinner-gap animate-spin text-5xl text-indigo-500 mb-4"></i>
                     <h2 class="text-xl font-bold mb-2">Exportování videa...</h2>
-                    <p class="text-sm text-gray-400 mb-4 text-center">Video se nyní přehrává na pozadí a nahrává se.<br>Prosím neklikejte do editoru.</p>
+                    <p class="text-sm text-gray-400 mb-4 text-center">Přehrávání a záznam probíhá synchronně.<br>Prosím neklikejte do editoru.</p>
                     <p class="text-white font-mono text-xl" id="export-progress">00:00 / 00:00</p>
                     <div class="w-64 h-2 bg-gray-800 rounded-full mt-4 overflow-hidden">
                         <div id="export-bar" class="h-full bg-indigo-500 w-0 transition-all duration-300"></div>
@@ -101,136 +109,179 @@
         <div class="resizer-x" id="resizer-x"></div>
 
         <aside id="properties-panel" class="w-80 bg-[#1a1d24] border-l border-[#272a33] flex flex-col shrink-0 overflow-y-auto min-w-[250px]">
-            <div class="p-4 border-b border-[#272a33] sticky top-0 bg-[#1a1d24] z-10">
-                <h2 class="font-semibold text-gray-100 flex items-center gap-2"><i class="ph ph-sliders"></i> Vlastnosti klipu</h2>
+            <div class="p-4 border-b border-[#272a33] sticky top-0 bg-[#1a1d24] z-10 flex justify-between items-center">
+                <h2 class="font-semibold text-gray-100 flex items-center gap-2"><i class="ph ph-sliders"></i> Vlastnosti</h2>
             </div>
-            <div id="properties-content" class="p-4 space-y-6 text-gray-300 hidden">
-                <div class="bg-[#272a33] p-3 rounded-lg border border-gray-700">
-                    <div class="text-xs text-gray-400 mb-1">Název souboru</div>
-                    <div class="truncate font-medium text-white" id="prop-name">video.mp4</div>
+            
+            <div id="properties-content" class="p-4 space-y-4 text-gray-300 hidden">
+                <div class="bg-[#272a33] p-3 rounded-lg border border-gray-700 relative">
+                    <div class="text-xs text-gray-400 mb-1" id="prop-type-label">Soubor</div>
+                    <div class="truncate font-medium text-white pr-8" id="prop-name">video.mp4</div>
                     <div class="flex justify-between mt-2 text-xs">
                         <span>Start: <span id="prop-start">0.0</span>s</span>
                         <span>Délka: <span id="prop-duration">0.0</span>s</span>
                     </div>
                 </div>
 
-                <div class="space-y-4">
-                    <h3 class="font-medium text-white flex items-center gap-2"><i class="ph ph-arrows-out-cardinal"></i> Transformace</h3>
-                    <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="splitClip()" class="py-2 bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/30 rounded transition flex justify-center items-center gap-2 font-medium text-xs" title="Zkratka: S">
+                        <i class="ph ph-scissors"></i> Rozstřihnout (S)
+                    </button>
+                    <button onclick="duplicateClip()" class="py-2 bg-gray-700/50 border border-gray-600 text-gray-300 hover:bg-gray-600 rounded transition flex justify-center items-center gap-2 font-medium text-xs">
+                        <i class="ph ph-copy"></i> Duplikovat
+                    </button>
+                </div>
+
+                <details id="cat-text" class="group hidden">
+                    <summary class="flex items-center gap-2 font-medium text-white bg-[#272a33] p-2 rounded cursor-pointer select-none">
+                        <i class="ph ph-caret-right transition-transform text-gray-400"></i>
+                        <i class="ph ph-text-t text-indigo-400"></i> Text
+                    </summary>
+                    <div class="p-2 pt-4 space-y-4 bg-[#0f1115] border-x border-b border-[#272a33] rounded-b -mt-1">
                         <div>
-                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Pozice X 
-                                <button onclick="addKeyframe('x')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button>
-                            </label>
-                            <input type="number" id="prop-x" class="w-full bg-[#0f1115] border border-gray-700 rounded p-1.5 text-white" onchange="updateProp('x', this.value)">
+                            <label class="text-xs text-gray-400 mb-1 block">Obsah textu</label>
+                            <textarea id="prop-textContent" class="w-full bg-[#1a1d24] border border-gray-700 rounded p-2 text-white" rows="2" oninput="updateProp('textContent', this.value)"></textarea>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs text-gray-400 mb-1 block">Velikost</label>
+                                <input type="number" id="prop-fontSize" class="w-full bg-[#1a1d24] border border-gray-700 rounded p-1.5 text-white" onchange="updateProp('fontSize', this.value)">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400 mb-1 block">Barva</label>
+                                <input type="color" id="prop-textColor" class="w-full h-8 bg-[#1a1d24] border border-gray-700 rounded cursor-pointer" onchange="updateProp('textColor', this.value)">
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                <details id="cat-position" class="group">
+                    <summary class="flex items-center gap-2 font-medium text-white bg-[#272a33] p-2 rounded cursor-pointer select-none">
+                        <i class="ph ph-caret-right transition-transform text-gray-400"></i>
+                        <i class="ph ph-arrows-out-cardinal text-indigo-400"></i> Pozice a Transformace
+                    </summary>
+                    <div class="p-2 pt-4 space-y-4 bg-[#0f1115] border-x border-b border-[#272a33] rounded-b -mt-1">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs text-gray-400 mb-1 block flex justify-between">Pozice X <button onclick="addKeyframe('x')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
+                                <input type="number" id="prop-x" class="w-full bg-[#1a1d24] border border-gray-700 rounded p-1.5 text-white" onchange="updateProp('x', this.value)">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400 mb-1 block flex justify-between">Pozice Y <button onclick="addKeyframe('y')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
+                                <input type="number" id="prop-y" class="w-full bg-[#1a1d24] border border-gray-700 rounded p-1.5 text-white" onchange="updateProp('y', this.value)">
+                            </div>
                         </div>
                         <div>
-                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Pozice Y 
-                                <button onclick="addKeyframe('y')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button>
-                            </label>
-                            <input type="number" id="prop-y" class="w-full bg-[#0f1115] border border-gray-700 rounded p-1.5 text-white" onchange="updateProp('y', this.value)">
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Velikost (Měřítko) <button onclick="addKeyframe('scale')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
+                            <div class="flex items-center gap-3">
+                                <input type="range" id="prop-scale-range" min="0" max="3" step="0.05" oninput="updateProp('scale', this.value); document.getElementById('prop-scale').value = this.value">
+                                <input type="number" id="prop-scale" step="0.05" class="w-16 bg-[#1a1d24] border border-gray-700 rounded p-1 text-center" onchange="updateProp('scale', this.value); document.getElementById('prop-scale-range').value = this.value">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Rotace (stupně) <button onclick="addKeyframe('rotation')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
+                            <input type="range" id="prop-rotation" min="-180" max="180" step="1" oninput="updateProp('rotation', this.value)">
                         </div>
                     </div>
-                    <div>
-                        <label class="text-xs text-gray-400 mb-1 block flex justify-between">Velikost
-                            <button onclick="addKeyframe('scale')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button>
-                        </label>
-                        <div class="flex items-center gap-3">
-                            <input type="range" id="prop-scale-range" min="0" max="3" step="0.05" oninput="updateProp('scale', this.value); document.getElementById('prop-scale').value = this.value">
-                            <input type="number" id="prop-scale" step="0.05" class="w-16 bg-[#0f1115] border border-gray-700 rounded p-1 text-center" onchange="updateProp('scale', this.value); document.getElementById('prop-scale-range').value = this.value">
+                </details>
+
+                <details id="cat-image" class="group">
+                    <summary class="flex items-center gap-2 font-medium text-white bg-[#272a33] p-2 rounded cursor-pointer select-none">
+                        <i class="ph ph-caret-right transition-transform text-gray-400"></i>
+                        <i class="ph ph-drop-half-bottom text-indigo-400"></i> Obraz a Vzhled
+                    </summary>
+                    <div class="p-2 pt-4 space-y-4 bg-[#0f1115] border-x border-b border-[#272a33] rounded-b -mt-1">
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Průhlednost <button onclick="addKeyframe('opacity')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
+                            <input type="range" id="prop-opacity" min="0" max="1" step="0.05" oninput="updateProp('opacity', this.value)">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Jas <button onclick="addKeyframe('brightness')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
+                            <input type="range" id="prop-brightness" min="0" max="200" step="1" oninput="updateProp('brightness', this.value)">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Kontrast <button onclick="addKeyframe('contrast')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
+                            <input type="range" id="prop-contrast" min="0" max="200" step="1" oninput="updateProp('contrast', this.value)">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Rozostření (Blur) <button onclick="addKeyframe('blur')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
+                            <input type="range" id="prop-blur" min="0" max="50" step="1" oninput="updateProp('blur', this.value)">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Sépia <button onclick="addKeyframe('sepia')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
+                            <input type="range" id="prop-sepia" min="0" max="100" step="1" oninput="updateProp('sepia', this.value)">
+                        </div>
+                        <div class="pt-2 border-t border-gray-800">
+                            <label class="text-xs text-gray-400 mb-1 block">Režim prolnutí (Blend Mode)</label>
+                            <select id="prop-blendMode" class="w-full bg-[#1a1d24] border border-gray-700 rounded p-1.5 text-white" onchange="updateProp('blendMode', this.value)">
+                                <option value="source-over">Normální (Základní)</option>
+                                <option value="multiply">Násobit (Multiply)</option>
+                                <option value="screen">Závoj (Screen)</option>
+                                <option value="overlay">Překrytí (Overlay)</option>
+                                <option value="darken">Ztmavit (Darken)</option>
+                                <option value="lighten">Zesvětlit (Lighten)</option>
+                            </select>
+                        </div>
+                        <div class="pt-2 border-t border-gray-800">
+                            <label class="text-xs text-gray-400 mb-1 block"><i class="ph ph-magic-wand"></i> Přechod In (Začátek)</label>
+                            <select id="prop-transition-in" class="w-full bg-[#1a1d24] border border-gray-700 rounded p-1.5 text-white" onchange="updateProp('transitionIn', this.value)">
+                                <option value="none">Žádný</option>
+                                <option value="fade">Prolínačka (Fade)</option>
+                                <option value="slideL">Zprava (Slide L)</option>
+                                <option value="slideR">Zleva (Slide R)</option>
+                                <option value="slideU">Zespodu (Slide U)</option>
+                                <option value="slideD">Zhora (Slide D)</option>
+                                <option value="zoomIn">Zoom In</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block"><i class="ph ph-magic-wand"></i> Přechod Out (Konec)</label>
+                            <select id="prop-transition-out" class="w-full bg-[#1a1d24] border border-gray-700 rounded p-1.5 text-white" onchange="updateProp('transitionOut', this.value)">
+                                <option value="none">Žádný</option>
+                                <option value="fade">Prolínačka (Fade)</option>
+                                <option value="slideL">Doleva (Slide L)</option>
+                                <option value="slideR">Doprava (Slide R)</option>
+                                <option value="slideU">Nahoru (Slide U)</option>
+                                <option value="slideD">Dolů (Slide D)</option>
+                                <option value="zoomOut">Zoom Out</option>
+                            </select>
                         </div>
                     </div>
-                    <div>
-                        <label class="text-xs text-gray-400 mb-1 block flex justify-between">Rotace (stupně)
-                            <button onclick="addKeyframe('rotation')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button>
-                        </label>
-                        <input type="range" id="prop-rotation" min="-180" max="180" step="1" oninput="updateProp('rotation', this.value)">
-                    </div>
-                </div>
+                </details>
 
-                <hr class="border-[#272a33]">
-
-                <div class="space-y-4">
-                    <h3 class="font-medium text-white flex items-center gap-2"><i class="ph ph-drop-half-bottom"></i> Vzhled & Efekty</h3>
-                    <div>
-                        <label class="text-xs text-gray-400 mb-1 block flex justify-between">Průhlednost
-                            <button onclick="addKeyframe('opacity')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button>
-                        </label>
-                        <input type="range" id="prop-opacity" min="0" max="1" step="0.05" oninput="updateProp('opacity', this.value)">
+                <details id="cat-audio" class="group">
+                    <summary class="flex items-center gap-2 font-medium text-white bg-[#272a33] p-2 rounded cursor-pointer select-none">
+                        <i class="ph ph-caret-right transition-transform text-gray-400"></i>
+                        <i class="ph ph-speaker-high text-indigo-400"></i> Zvuk
+                    </summary>
+                    <div class="p-2 pt-4 space-y-4 bg-[#0f1115] border-x border-b border-[#272a33] rounded-b -mt-1">
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Hlasitost <button onclick="addKeyframe('volume')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
+                            <input type="range" id="prop-volume" min="0" max="1" step="0.05" oninput="updateProp('volume', this.value)">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Výška / Rychlost</label>
+                            <div class="flex items-center gap-3">
+                                <input type="range" id="prop-pitch-range" min="0.5" max="2" step="0.1" oninput="updateProp('pitch', this.value); document.getElementById('prop-pitch').value = this.value">
+                                <input type="number" id="prop-pitch" step="0.1" class="w-16 bg-[#1a1d24] border border-gray-700 rounded p-1 text-center" onchange="updateProp('pitch', this.value); document.getElementById('prop-pitch-range').value = this.value">
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <label class="text-xs text-gray-400 mb-1 block flex justify-between">Jas
-                            <button onclick="addKeyframe('brightness')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button>
-                        </label>
-                        <input type="range" id="prop-brightness" min="0" max="200" step="1" oninput="updateProp('brightness', this.value)">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-400 mb-1 block flex justify-between">Kontrast
-                            <button onclick="addKeyframe('contrast')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button>
-                        </label>
-                        <input type="range" id="prop-contrast" min="0" max="200" step="1" oninput="updateProp('contrast', this.value)">
-                    </div>
-                </div>
+                </details>
 
-                <hr class="border-[#272a33]">
-
-                <div class="space-y-4">
-                    <h3 class="font-medium text-white flex items-center gap-2"><i class="ph ph-magic-wand"></i> Přechody</h3>
-                    <div>
-                        <label class="text-xs text-gray-400 mb-1 block">Začátek (In)</label>
-                        <select id="prop-transition-in" class="w-full bg-[#0f1115] border border-gray-700 rounded p-2 text-white outline-none" onchange="updateProp('transitionIn', this.value)">
-                            <option value="none">Žádný</option>
-                            <option value="fade">Prolínačka</option>
-                            <option value="slideL">Posun zleva</option>
-                            <option value="slideR">Posun zprava</option>
-                            <option value="slideU">Posun zdola</option>
-                            <option value="slideD">Posun shora</option>
-                            <option value="zoomIn">Zoom In</option>
-                            <option value="spin">Rotace</option>
-                            <option value="blur">Rozostření</option>
-                            <option value="grayscale">Z černobílé</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-400 mb-1 block">Konec (Out)</label>
-                        <select id="prop-transition-out" class="w-full bg-[#0f1115] border border-gray-700 rounded p-2 text-white outline-none" onchange="updateProp('transitionOut', this.value)">
-                            <option value="none">Žádný</option>
-                            <option value="fade">Prolínačka</option>
-                            <option value="slideL">Posun doleva</option>
-                            <option value="slideR">Posun doprava</option>
-                            <option value="slideU">Posun nahoru</option>
-                            <option value="slideD">Posun dolů</option>
-                            <option value="zoomOut">Zoom Out</option>
-                            <option value="spin">Rotace</option>
-                            <option value="blur">Rozostření</option>
-                            <option value="grayscale">Do černobílé</option>
-                        </select>
-                    </div>
-                </div>
-
-                <hr class="border-[#272a33]">
-
-                <div class="space-y-4" id="audio-props-container">
-                    <h3 class="font-medium text-white flex items-center gap-2"><i class="ph ph-speaker-high"></i> Zvuk</h3>
-                    <div>
-                        <label class="text-xs text-gray-400 mb-1 block flex justify-between">Hlasitost
-                            <button onclick="addKeyframe('volume')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button>
-                        </label>
-                        <input type="range" id="prop-volume" min="0" max="1" step="0.05" oninput="updateProp('volume', this.value)">
-                    </div>
-                </div>
-
-                <div class="space-y-2 mt-4">
-                    <h3 class="font-medium text-white text-xs uppercase tracking-wider text-gray-500 mb-2">Aktivní Keyframy</h3>
+                <div class="space-y-2 mt-4 bg-[#272a33] p-3 rounded-lg border border-gray-700">
+                    <h3 class="font-medium text-white text-xs uppercase tracking-wider text-gray-400 mb-2">Aktivní Animace</h3>
                     <div id="keyframes-list" class="space-y-1 text-xs"></div>
                 </div>
 
-                <button onclick="deleteSelectedClip()" class="w-full mt-4 py-2 border border-red-500/30 text-red-400 hover:bg-red-500/10 rounded transition flex justify-center items-center gap-2">
+                <button onclick="deleteSelectedClip()" class="w-full mt-4 py-2 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 rounded transition flex justify-center items-center gap-2 font-medium" title="Zkratka: Delete">
                     <i class="ph ph-trash"></i> Smazat klip
                 </button>
             </div>
+            
             <div id="no-selection-msg" class="p-8 text-center text-gray-500 flex flex-col items-center mt-20">
                 <i class="ph ph-cursor-click text-4xl mb-3"></i>
-                <p>Klikněte na klip pro zobrazení vlastností.</p>
+                <p>Klikněte na klip v časové ose pro zobrazení vlastností.</p>
             </div>
         </aside>
     </div>
@@ -253,22 +304,19 @@
         </div>
 
         <div class="flex flex-1 overflow-hidden relative" id="timeline-scroll-area">
-            <div class="w-28 bg-[#1a1d24] border-r border-[#272a33] flex flex-col z-20 sticky left-0 shrink-0" id="track-headers"></div>
-
+            <div class="w-32 bg-[#1a1d24] border-r border-[#272a33] flex flex-col z-20 sticky left-0 shrink-0" id="track-headers"></div>
             <div class="flex-1 overflow-auto relative timeline-grid" id="timeline-content">
                 <div class="h-6 border-b border-[#272a33] sticky top-0 bg-[#1a1d24]/90 backdrop-blur z-10 w-full cursor-pointer" id="time-ruler">
                     <canvas id="ruler-canvas" class="w-full h-full"></canvas>
                 </div>
-
                 <div id="playhead" class="absolute top-0 bottom-0 z-30 pointer-events-none flex flex-col items-center" style="left: 0px;">
                     <div class="relative">
                         <div class="w-3 h-3 bg-red-500 rotate-45 rounded-sm absolute -top-1.5 -left-1.5"></div>
                         <div id="playhead-info" class="absolute -top-7 left-1/2 -translate-x-1/2 bg-red-500 text-white text-[10px] font-mono px-1.5 py-0.5 rounded shadow whitespace-nowrap">00:00.0</div>
                     </div>
-                    <div class="w-px h-full bg-red-500 mt-1.5"></div>
+                    <div class="w-px h-full bg-red-500 mt-1.5 shadow-[0_0_5px_rgba(239,68,68,0.5)]"></div>
                 </div>
-
-                <div id="tracks-container" class="relative w-full pb-20"></div>
+                <div id="tracks-container" class="relative w-full pb-20 flex flex-col"></div>
             </div>
         </div>
     </footer>
@@ -278,7 +326,7 @@
             <h2 class="text-lg font-bold mb-4 flex items-center gap-2"><i class="ph ph-gear"></i> Nastavení Projektu</h2>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1">Rozlišení</label>
+                    <label class="block text-xs text-gray-400 mb-1">Rozlišení (Šířka x Výška)</label>
                     <div class="flex items-center gap-2">
                         <input type="number" id="set-width" value="1920" class="w-full bg-[#0f1115] border border-gray-700 rounded p-2 text-white">
                         <span class="text-gray-500">x</span>
@@ -287,15 +335,13 @@
                     <div class="flex gap-2 mt-2">
                         <button onclick="applyPreset(1920, 1080)" class="text-xs bg-[#272a33] hover:bg-gray-600 px-2 py-1 rounded">FHD</button>
                         <button onclick="applyPreset(1080, 1920)" class="text-xs bg-[#272a33] hover:bg-gray-600 px-2 py-1 rounded">TikTok</button>
-                        <button onclick="applyPreset(1080, 1080)" class="text-xs bg-[#272a33] hover:bg-gray-600 px-2 py-1 rounded">1:1</button>
+                        <button onclick="applyPreset(1080, 1080)" class="text-xs bg-[#272a33] hover:bg-gray-600 px-2 py-1 rounded">Čtverec</button>
                     </div>
                 </div>
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">FPS</label>
                     <select id="set-fps" class="w-full bg-[#0f1115] border border-gray-700 rounded p-2 text-white outline-none">
-                        <option value="24">24 FPS</option>
-                        <option value="30" selected>30 FPS</option>
-                        <option value="60">60 FPS</option>
+                        <option value="24">24 FPS</option><option value="30" selected>30 FPS</option><option value="60">60 FPS</option>
                     </select>
                 </div>
                 <div>
@@ -309,132 +355,189 @@
             </div>
         </div>
     </div>
-    <div id="toast-container" class="fixed bottom-5 right-5 z-[150] flex flex-col gap-2"></div>
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-[150] flex flex-col gap-2 pointer-events-none"></div>
 
     <script>
         const state = {
-            currentTime: 0, isPlaying: false, duration: 30, zoom: 50,
+            currentTime: 0, isPlaying: false, duration: 60, zoom: 50, snapTolerancePx: 12,
             width: 1920, height: 1080, fps: 30, bgColor: '#000000',
             tracks: [
-                { id: 't1', name: 'Video 1', type: 'video' },
-                { id: 't2', name: 'Audio 1', type: 'audio' }
+                { id: 'v1', name: 'Obraz 1', type: 'video' },
+                { id: 'a1', name: 'Zvuk 1', type: 'audio' }
             ],
-            clips: [], selectedClipId: null, dragInfo: null, isExporting: false, exportMaxTime: 0, cancelExportFlag: false
+            clips: [], selectedClipId: null, dragInfo: null, isExporting: false, exportMaxTime: 0
         };
 
         const canvas = document.getElementById('preview-canvas');
         const ctx = canvas.getContext('2d', { alpha: false });
-        let animationFrameId; let lastTimestamp = null;
+        let animationFrameId; let lastTimestamp = 0;
 
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx; let mainAudioDest; let mediaRecorder; let exportChunks = [];
 
         function init() {
-            setupResizers();
-            renderTimeline();
-            updateTimeRuler();
-            updateProjectBadge();
+            setupResizers(); renderTimeline(); updateTimeRuler(); updateProjectBadge();
             requestAnimationFrame(renderLoop);
             
-            const tlContent = document.getElementById('timeline-content');
-            tlContent.addEventListener('mousedown', (e) => {
-                if(e.target.closest('.clip') || e.target.closest('.resizer-x') || e.target.closest('.resizer-y')) return;
+            document.getElementById('timeline-content').addEventListener('mousedown', (e) => {
+                if(e.target.closest('.clip') || e.target.closest('.resizer-x') || e.target.closest('.resizer-y') || e.target.closest('#track-headers')) return;
                 const rect = document.getElementById('tracks-container').getBoundingClientRect();
                 const clickX = e.clientX - rect.left;
                 if(clickX >= 0) seek(clickX / state.zoom);
             });
-            window.addEventListener('resize', () => { updateTimeRuler(); });
+            window.addEventListener('resize', () => updateTimeRuler());
+            setupKeyboardShortcuts();
+        }
+
+        function setupKeyboardShortcuts() {
+            window.addEventListener('keydown', (e) => {
+                // Ignore if user is typing in inputs
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+                
+                if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+                if (e.code === 'KeyS') { e.preventDefault(); splitClip(); }
+                if (e.code === 'Delete') { e.preventDefault(); deleteSelectedClip(); }
+            });
         }
 
         function setupResizers() {
-            const resX = document.getElementById('resizer-x');
-            const resY = document.getElementById('resizer-y');
-            const propPanel = document.getElementById('properties-panel');
-            const tlArea = document.getElementById('timeline-area');
+            const resX = document.getElementById('resizer-x'); const resY = document.getElementById('resizer-y');
+            const propPanel = document.getElementById('properties-panel'); const tlArea = document.getElementById('timeline-area');
             let isResizingX = false; let isResizingY = false;
-
-            resX.addEventListener('mousedown', () => isResizingX = true);
-            resY.addEventListener('mousedown', () => isResizingY = true);
-
+            resX.addEventListener('mousedown', () => isResizingX = true); resY.addEventListener('mousedown', () => isResizingY = true);
             document.addEventListener('mousemove', (e) => {
-                if (isResizingX) { propPanel.style.width = Math.max(250, Math.min(document.body.clientWidth - e.clientX - 3, 600)) + 'px'; }
-                if (isResizingY) { tlArea.style.height = Math.max(150, Math.min(document.body.clientHeight - e.clientY - 3, document.body.clientHeight - 200)) + 'px'; }
+                if (isResizingX) propPanel.style.width = Math.max(250, Math.min(document.body.clientWidth - e.clientX - 3, 600)) + 'px';
+                if (isResizingY) tlArea.style.height = Math.max(150, Math.min(document.body.clientHeight - e.clientY - 3, document.body.clientHeight - 200)) + 'px';
             });
-
-            document.addEventListener('mouseup', () => {
-                if(isResizingX || isResizingY) updateTimeRuler();
-                isResizingX = false; isResizingY = false;
-            });
+            document.addEventListener('mouseup', () => { if(isResizingX || isResizingY) updateTimeRuler(); isResizingX = false; isResizingY = false; });
         }
 
         function openSettings() { document.getElementById('settings-modal').classList.remove('hidden'); }
         function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
         function applyPreset(w, h) { document.getElementById('set-width').value = w; document.getElementById('set-height').value = h; }
-        
         function saveSettings() {
-            state.width = parseInt(document.getElementById('set-width').value);
-            state.height = parseInt(document.getElementById('set-height').value);
-            state.fps = parseInt(document.getElementById('set-fps').value);
-            state.bgColor = document.getElementById('set-bg').value;
+            state.width = parseInt(document.getElementById('set-width').value); state.height = parseInt(document.getElementById('set-height').value);
+            state.fps = parseInt(document.getElementById('set-fps').value); state.bgColor = document.getElementById('set-bg').value;
             canvas.width = state.width; canvas.height = state.height;
             document.getElementById('canvas-container').style.aspectRatio = `${state.width}/${state.height}`;
-            updateProjectBadge(); renderCanvas(); closeSettings(); showToast('Nastavení uloženo');
+            updateProjectBadge(); renderCanvas(); closeSettings(); showToast('Nastavení projektu uloženo');
         }
-        
         function updateProjectBadge() { document.getElementById('project-info-badge').innerText = `${state.width}x${state.height} • ${state.fps} FPS`; }
 
+        function getTargetTrackId(type) {
+            const tracks = state.tracks.filter(t => t.type === type);
+            if(tracks.length > 0) return tracks[0].id;
+            addTrack(type); return state.tracks[state.tracks.length - 1].id;
+        }
+
+        function addTextClip() {
+            const clip = {
+                id: 'text_' + Date.now(), name: 'Nový Text', fileType: 'text',
+                start: state.currentTime, duration: 5, sourceStart: 0,
+                trackId: getTargetTrackId('video'), color: 'bg-purple-600',
+                properties: { textContent: 'Váš Text', fontSize: 120, textColor: '#ffffff', x: state.width/2, y: state.height/2, scale: 1, rotation: 0, opacity: 1, brightness: 100, contrast: 100, blur: 0, sepia: 0, blendMode: 'source-over', transitionIn: 'none', transitionOut: 'none' },
+                keyframes: {}
+            };
+            state.clips.push(clip); showToast('Text přidán'); renderTimeline(); renderCanvas(); selectClip(clip.id);
+        }
+
         function handleFiles(event) {
-            const files = event.target.files;
-            if (!files.length) return;
-
+            const files = event.target.files; if (!files.length) return;
             Array.from(files).forEach(file => {
-                const isVideo = file.type.startsWith('video');
-                const isAudio = file.type.startsWith('audio');
-                const isImage = file.type.startsWith('image');
-                
-                let targetTrack = state.tracks.find(t => isAudio ? t.type === 'audio' : t.type === 'video');
-                if(!targetTrack) { addTrack(isAudio ? 'audio' : 'video'); targetTrack = state.tracks[state.tracks.length - 1]; }
-
+                const isVideo = file.type.startsWith('video'); const isAudio = file.type.startsWith('audio'); const isImage = file.type.startsWith('image');
                 const clip = {
-                    id: 'clip_' + Date.now() + Math.floor(Math.random() * 1000),
-                    name: file.name, fileType: isVideo ? 'video' : isAudio ? 'audio' : 'image',
+                    id: 'clip_' + Date.now() + Math.floor(Math.random() * 1000), name: file.name, fileType: isVideo ? 'video' : isAudio ? 'audio' : 'image',
                     url: URL.createObjectURL(file), start: state.currentTime, duration: 5, sourceStart: 0,
-                    trackId: targetTrack.id, color: isVideo ? 'bg-blue-600' : isAudio ? 'bg-green-600' : 'bg-purple-600',
+                    trackId: getTargetTrackId(isAudio ? 'audio' : 'video'), color: isVideo ? 'bg-blue-600' : isAudio ? 'bg-green-600' : 'bg-orange-600',
                     element: null, audioNode: null,
-                    properties: { x: state.width/2, y: state.height/2, scale: 1, rotation: 0, opacity: 1, brightness: 100, contrast: 100, volume: 1, transitionIn: 'none', transitionOut: 'none' },
+                    properties: { x: state.width/2, y: state.height/2, scale: 1, rotation: 0, opacity: 1, brightness: 100, contrast: 100, blur: 0, sepia: 0, blendMode: 'source-over', volume: 1, pitch: 1, transitionIn: 'none', transitionOut: 'none' },
                     keyframes: {}
                 };
-
                 if (isVideo || isAudio) {
                     const el = document.createElement(isVideo ? 'video' : 'audio');
-                    el.src = clip.url; el.crossOrigin = 'anonymous'; // Nutné pro export přes plátno
+                    el.src = clip.url; el.crossOrigin = 'anonymous';
                     el.onloadedmetadata = () => { clip.duration = Math.min(el.duration, 60); renderTimeline(); renderCanvas(); };
                     clip.element = el;
                 } else if (isImage) {
                     const el = new Image(); el.src = clip.url; el.crossOrigin = 'anonymous';
                     el.onload = () => renderCanvas(); clip.element = el;
                 }
-
-                state.clips.push(clip);
-                showToast(`Přidáno: ${file.name}`);
+                state.clips.push(clip); showToast(`Přidáno: ${file.name}`);
             });
             renderTimeline();
         }
 
-        // OPRAVA 3: Správná inicializace lastTimestamp pro prevenci skoku v čase
-        function renderLoop(timestamp) {
-            if (lastTimestamp === null) lastTimestamp = timestamp;
+        function cloneMediaElement(clip) {
+            if (clip.fileType === 'text') return null;
+            if (clip.fileType === 'image') {
+                const el = new Image(); el.src = clip.url; el.crossOrigin = 'anonymous'; return el;
+            }
+            const el = document.createElement(clip.fileType);
+            el.src = clip.url; el.crossOrigin = 'anonymous'; return el;
+        }
+
+        function splitClip() {
+            if (!state.selectedClipId) return showToast("Vyberte klip k rozstřižení.");
+            const clipIndex = state.clips.findIndex(c => c.id === state.selectedClipId);
+            const clip = state.clips[clipIndex];
             
+            if (state.currentTime <= clip.start + 0.1 || state.currentTime >= (clip.start + clip.duration) - 0.1) {
+                return showToast("Hlava musí být uvnitř klipu.");
+            }
+
+            const splitOffset = state.currentTime - clip.start;
+            
+            // Vytvoření nového klipu (druhá část)
+            const newClip = {
+                id: 'clip_' + Date.now() + Math.floor(Math.random() * 1000),
+                name: clip.name + " (střih)", fileType: clip.fileType,
+                url: clip.url, start: state.currentTime,
+                duration: clip.duration - splitOffset,
+                sourceStart: clip.sourceStart + splitOffset,
+                trackId: clip.trackId, color: clip.color,
+                element: cloneMediaElement(clip), audioNode: null,
+                properties: JSON.parse(JSON.stringify(clip.properties)),
+                keyframes: JSON.parse(JSON.stringify(clip.keyframes))
+            };
+
+            // Zkrácení původního klipu
+            clip.duration = splitOffset;
+
+            state.clips.push(newClip);
+            showToast("Klip byl rozstřižen.");
+            renderTimeline(); renderCanvas();
+            selectClip(newClip.id);
+        }
+
+        function duplicateClip() {
+            if (!state.selectedClipId) return;
+            const clip = state.clips.find(c => c.id === state.selectedClipId);
+            const newClip = {
+                id: 'clip_' + Date.now() + Math.floor(Math.random() * 1000),
+                name: clip.name + " (kopie)", fileType: clip.fileType,
+                url: clip.url, start: clip.start + clip.duration, // Vloží hned za
+                duration: clip.duration, sourceStart: clip.sourceStart,
+                trackId: clip.trackId, color: clip.color,
+                element: cloneMediaElement(clip), audioNode: null,
+                properties: JSON.parse(JSON.stringify(clip.properties)),
+                keyframes: JSON.parse(JSON.stringify(clip.keyframes))
+            };
+            state.clips.push(newClip);
+            showToast("Klip byl duplikován.");
+            renderTimeline(); renderCanvas();
+            selectClip(newClip.id);
+        }
+
+        function renderLoop(timestamp) {
             if (state.isPlaying) {
                 const delta = (timestamp - lastTimestamp) / 1000;
                 state.currentTime += delta;
-                
                 if (state.isExporting) {
                     updateExportUI();
                     if (state.currentTime >= state.exportMaxTime) finishExport();
                 } else if (state.currentTime > state.duration) {
-                    state.currentTime = state.duration;
-                    togglePlay();
+                    state.currentTime = state.duration; togglePlay();
                 }
                 updatePlayheadUI();
             }
@@ -444,27 +547,28 @@
         }
 
         function renderCanvas() {
+            ctx.globalCompositeOperation = 'source-over';
             ctx.fillStyle = state.bgColor;
             ctx.fillRect(0, 0, state.width, state.height);
 
             const activeClips = state.clips.filter(c => state.currentTime >= c.start && state.currentTime < c.start + c.duration);
             activeClips.sort((a, b) => state.tracks.findIndex(t => t.id === b.trackId) - state.tracks.findIndex(t => t.id === a.trackId));
+            activeClips.reverse(); // Bottom track renders first (background)
 
             activeClips.forEach(clip => {
-                // OPRAVA 1: Plynulejší synchronizace přehrávání
                 if (clip.element && (clip.fileType === 'video' || clip.fileType === 'audio')) {
-                    const targetTime = clip.sourceStart + (state.currentTime - clip.start);
-                    const timeDiff = Math.abs(clip.element.currentTime - targetTime);
+                    const pitch = getInterp(clip, 'pitch', state.currentTime) || 1;
+                    if (clip.element.playbackRate !== pitch) { clip.element.playbackRate = pitch; clip.element.preservesPitch = false; }
+
+                    const elapsedInClip = (state.currentTime - clip.start) * pitch;
+                    const targetTime = clip.sourceStart + elapsedInClip;
                     
-                    if (!state.isPlaying) {
-                        // Přesná pozice pro pauzu/scrubbing
-                        if (timeDiff > 0.05) clip.element.currentTime = targetTime;
-                        if (!clip.element.paused) clip.element.pause();
-                    } else {
-                        // Během hraní nebudeme aktualizovat každou sekundu (jinak by se to zasekávalo)
-                        if (timeDiff > 0.3) clip.element.currentTime = targetTime;
-                        if (clip.element.paused) clip.element.play().catch(()=>{});
-                    }
+                    // Relaxed sync for multi-layer smoothness
+                    const diff = Math.abs(clip.element.currentTime - targetTime);
+                    if (diff > 0.3) clip.element.currentTime = targetTime;
+                    
+                    if (state.isPlaying && clip.element.paused) clip.element.play().catch(()=>{});
+                    else if (!state.isPlaying && !clip.element.paused) clip.element.pause();
 
                     clip.element.volume = Math.max(0, Math.min(1, getInterp(clip, 'volume', state.currentTime)));
                 }
@@ -472,70 +576,75 @@
                 if (clip.fileType === 'audio') return;
 
                 ctx.save();
-                let x = getInterp(clip, 'x', state.currentTime);
-                let y = getInterp(clip, 'y', state.currentTime);
+                
+                let base_x = getInterp(clip, 'x', state.currentTime);
+                let base_y = getInterp(clip, 'y', state.currentTime);
                 let scale = getInterp(clip, 'scale', state.currentTime);
                 let rot = getInterp(clip, 'rotation', state.currentTime);
                 let op = getInterp(clip, 'opacity', state.currentTime);
                 let br = getInterp(clip, 'brightness', state.currentTime);
                 let ct = getInterp(clip, 'contrast', state.currentTime);
+                let blr = getInterp(clip, 'blur', state.currentTime);
+                let sep = getInterp(clip, 'sepia', state.currentTime);
+                
+                let dx = 0, dy = 0, dScale = 1, dOp = 1;
+                const tIn = clip.properties.transitionIn; const tOut = clip.properties.transitionOut;
+                const tDur = Math.min(1.0, clip.duration / 3);
+                const tInClip = state.currentTime - clip.start;
+                const tLeft = (clip.start + clip.duration) - state.currentTime;
 
-                applyTransition(clip, x, y, scale, rot, op, br, ct);
+                if (tIn !== 'none' && tInClip < tDur) {
+                    const ease = tInClip / tDur;
+                    if(tIn==='fade') dOp = ease;
+                    if(tIn==='slideL') dx = state.width * (1-ease);
+                    if(tIn==='slideR') dx = -state.width * (1-ease);
+                    if(tIn==='slideU') dy = state.height * (1-ease);
+                    if(tIn==='slideD') dy = -state.height * (1-ease);
+                    if(tIn==='zoomIn') dScale = ease;
+                } else if (tOut !== 'none' && tLeft < tDur) {
+                    const ease = tLeft / tDur;
+                    if(tOut==='fade') dOp = ease;
+                    if(tOut==='slideL') dx = -state.width * (1-ease);
+                    if(tOut==='slideR') dx = state.width * (1-ease);
+                    if(tOut==='slideU') dy = -state.height * (1-ease);
+                    if(tOut==='slideD') dy = state.height * (1-ease);
+                    if(tOut==='zoomOut') dScale = ease;
+                }
 
-                if (clip.element && (clip.fileType === 'image' || clip.element.readyState >= 2)) {
+                ctx.globalCompositeOperation = clip.properties.blendMode || 'source-over';
+                ctx.translate(base_x + dx, base_y + dy);
+                ctx.rotate(rot * Math.PI / 180);
+                ctx.scale(scale * dScale, scale * dScale);
+                ctx.globalAlpha = Math.max(0, Math.min(1, op * dOp));
+                
+                let filters = `brightness(${br}%) contrast(${ct}%)`;
+                if(blr > 0) filters += ` blur(${blr}px)`;
+                if(sep > 0) filters += ` sepia(${sep}%)`;
+                ctx.filter = filters;
+
+                if (clip.fileType === 'text') {
+                    ctx.font = `bold ${clip.properties.fontSize || 120}px Inter, sans-serif`;
+                    ctx.fillStyle = clip.properties.textColor || '#ffffff';
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText(clip.properties.textContent || '', 0, 0);
+                } else if (clip.element && (clip.fileType === 'image' || clip.element.readyState >= 2)) {
                     let dw = clip.fileType === 'video' ? clip.element.videoWidth : clip.element.width;
                     let dh = clip.fileType === 'video' ? clip.element.videoHeight : clip.element.height;
-                    
                     if (dw > state.width || dh > state.height) {
-                        const ratio = Math.min(state.width/dw, state.height/dh);
-                        dw *= ratio; dh *= ratio;
+                        const ratio = Math.min(state.width/dw, state.height/dh); dw *= ratio; dh *= ratio;
                     }
                     ctx.drawImage(clip.element, -dw/2, -dh/2, dw, dh);
                 }
                 ctx.restore();
             });
 
-            state.clips.forEach(c => {
-                if (!activeClips.includes(c) && c.element && !c.element.paused) c.element.pause();
-            });
-        }
-
-        function applyTransition(clip, x, y, scale, rot, op, br, ct) {
-            const tIn = clip.properties.transitionIn;
-            const tOut = clip.properties.transitionOut;
-            const tDur = Math.min(1.0, clip.duration / 3);
-            const tInClip = state.currentTime - clip.start;
-            const tLeft = (clip.start + clip.duration) - state.currentTime;
-
-            let ease = 1; let type = 'none'; let isIn = true;
-            
-            if (tIn !== 'none' && tInClip < tDur) { ease = tInClip / tDur; type = tIn; } 
-            else if (tOut !== 'none' && tLeft < tDur) { ease = 1 - (tLeft / tDur); type = tOut; isIn = false; }
-
-            if (type !== 'none') {
-                if(type==='fade') op *= ease;
-                else if(type==='slideL') x += isIn ? -state.width*(1-ease) : -state.width*(1-ease);
-                else if(type==='slideR') x += isIn ? state.width*(1-ease) : state.width*(1-ease);
-                else if(type==='slideU') y += isIn ? state.height*(1-ease) : state.height*(1-ease);
-                else if(type==='slideD') y += isIn ? -state.height*(1-ease) : -state.height*(1-ease);
-                else if(type==='zoomIn') scale *= ease;
-                else if(type==='zoomOut') { scale *= (isIn ? (2-ease) : (2-ease)); op *= ease; }
-                else if(type==='spin') { rot += isIn ? 360*(1-ease) : -360*(1-ease); scale *= ease; }
-            }
-
-            ctx.translate(x, y); ctx.rotate(rot * Math.PI / 180); ctx.scale(scale, scale);
-            ctx.globalAlpha = Math.max(0, Math.min(1, op));
-            
-            let filter = `brightness(${br}%) contrast(${ct}%)`;
-            if (type === 'blur') filter += ` blur(${10*(1-ease)}px)`;
-            if (type === 'grayscale') filter += ` grayscale(${100*(1-ease)}%)`;
-            ctx.filter = filter;
+            state.clips.forEach(c => { if (!activeClips.includes(c) && c.element && !c.element.paused) c.element.pause(); });
         }
 
         function getInterp(clip, prop, time) {
             const base = parseFloat(clip.properties[prop]);
             const kfs = clip.keyframes[prop];
-            if (!kfs || !kfs.length) return base;
+            if (!kfs || !kfs.length) return isNaN(base) ? clip.properties[prop] : base;
 
             const ct = time - clip.start;
             kfs.sort((a,b) => a.time - b.time);
@@ -558,13 +667,13 @@
             if (ct < 0 || ct > clip.duration) return showToast("Hlava musí být nad klipem!");
 
             if (!clip.keyframes[prop]) clip.keyframes[prop] = [];
-            const val = parseFloat(document.getElementById(`prop-${prop}`).value || document.getElementById(`prop-${prop}-range`).value);
+            const input = document.getElementById(`prop-${prop}`) || document.getElementById(`prop-${prop}-range`);
+            const val = parseFloat(input.value);
             
             const idx = clip.keyframes[prop].findIndex(k => Math.abs(k.time - ct) < 0.1);
-            if (idx >= 0) clip.keyframes[prop][idx].value = val;
-            else clip.keyframes[prop].push({ time: ct, value: val });
+            if (idx >= 0) clip.keyframes[prop][idx].value = val; else clip.keyframes[prop].push({ time: ct, value: val });
             
-            showToast(`Keyframe přidán: ${prop}`); updatePropsPanel(); renderCanvas();
+            showToast(`Animace přidána: ${prop}`); updatePropsPanel(); renderCanvas();
         }
 
         function deleteKeyframe(prop, idx) {
@@ -573,22 +682,32 @@
         }
 
         function renderTimeline() {
-            document.getElementById('track-headers').innerHTML = state.tracks.map((t) => `
+            const videoTracks = state.tracks.filter(t => t.type === 'video');
+            const audioTracks = state.tracks.filter(t => t.type === 'audio');
+            
+            const renderTrackHeader = (t) => `
                 <div class="h-16 flex items-center px-3 border-b border-[#272a33] text-gray-400 text-xs justify-between bg-[#1a1d24]">
                     <span class="truncate" title="${t.name}">${t.name}</span>
                     <div class="flex items-center gap-1">
                         <i class="ph ${t.type === 'video' ? 'ph-video-camera' : 'ph-music-note'} opacity-50"></i>
                         <button onclick="removeTrack('${t.id}')" class="hover:text-red-400 ml-1" title="Smazat"><i class="ph ph-trash"></i></button>
                     </div>
-                </div>
-            `).join('');
-
-            document.getElementById('tracks-container').innerHTML = state.tracks.map(t => `
-                <div class="h-16 border-b border-[#272a33] relative track-lane" data-track-id="${t.id}">
+                </div>`;
+            
+            const renderTrackLane = (t) => `
+                <div class="h-16 border-b border-[#272a33] relative track-lane w-full ${t.type === 'audio' ? 'bg-[#1a1d24]/50' : ''}" data-track-id="${t.id}" data-type="${t.type}">
                     ${state.clips.filter(c => c.trackId === t.id).map(c => renderClip(c)).join('')}
-                </div>
-            `).join('');
+                </div>`;
 
+            let headersHtml = ''; let lanesHtml = '';
+            videoTracks.forEach(t => { headersHtml += renderTrackHeader(t); lanesHtml += renderTrackLane(t); });
+            if(videoTracks.length > 0 && audioTracks.length > 0) {
+                headersHtml += `<div class="h-2 bg-[#0f1115] border-b border-[#272a33] w-full"></div>`;
+                lanesHtml += `<div class="h-2 bg-[#0f1115] border-b border-[#272a33] w-full pointer-events-none"></div>`;
+            }
+            audioTracks.forEach(t => { headersHtml += renderTrackHeader(t); lanesHtml += renderTrackLane(t); });
+
+            document.getElementById('track-headers').innerHTML = headersHtml; document.getElementById('tracks-container').innerHTML = lanesHtml;
             document.querySelectorAll('.clip').forEach(el => el.addEventListener('mousedown', startDrag));
             document.querySelectorAll('.clip .resizer').forEach(el => el.addEventListener('mousedown', startResize));
         }
@@ -596,15 +715,11 @@
         function renderClip(clip) {
             const l = clip.start * state.zoom; const w = clip.duration * state.zoom;
             const sel = clip.id === state.selectedClipId;
-            const icon = clip.fileType === 'video' ? 'ph-video-camera' : clip.fileType === 'audio' ? 'ph-music-note' : 'ph-image';
+            let icon = 'ph-image'; if(clip.fileType === 'video') icon = 'ph-video-camera'; else if(clip.fileType === 'audio') icon = 'ph-music-note'; else if(clip.fileType === 'text') icon = 'ph-text-t';
             return `
-                <div class="clip absolute top-1 bottom-1 rounded-md overflow-hidden shadow ${clip.color} ${sel ? 'selected' : 'opacity-90'}" 
-                     style="left: ${l}px; width: ${w}px;" data-clip-id="${clip.id}">
-                    <div class="px-2 py-1 text-xs text-white truncate flex items-center gap-1 pointer-events-none">
-                        <i class="ph ${icon}"></i> ${clip.name}
-                    </div>
-                    <div class="resizer left" data-dir="left"></div>
-                    <div class="resizer right" data-dir="right"></div>
+                <div class="clip absolute top-1 bottom-1 rounded-md overflow-hidden shadow ${clip.color} ${sel ? 'selected' : 'opacity-90'}" style="left: ${l}px; width: ${w}px;" data-clip-id="${clip.id}">
+                    <div class="px-2 py-1 text-xs text-white truncate flex items-center gap-1 pointer-events-none drop-shadow-md"><i class="ph ${icon}"></i> ${clip.name}</div>
+                    <div class="resizer left" data-dir="left"></div><div class="resizer right" data-dir="right"></div>
                 </div>`;
         }
 
@@ -612,44 +727,44 @@
             const tlContent = document.getElementById('timeline-content');
             const w = Math.max(state.duration * state.zoom, tlContent.clientWidth);
             const canvasR = document.getElementById('ruler-canvas');
-            canvasR.width = w; canvasR.height = 24;
-            const ctxR = canvasR.getContext('2d');
-            
-            ctxR.fillStyle = '#1a1d24'; ctxR.fillRect(0, 0, w, 24);
-            ctxR.fillStyle = '#6b7280'; ctxR.font = '10px Inter'; ctxR.textAlign = 'center';
-
+            canvasR.width = w; canvasR.height = 24; const ctxR = canvasR.getContext('2d');
+            ctxR.fillStyle = '#1a1d24'; ctxR.fillRect(0, 0, w, 24); ctxR.fillStyle = '#6b7280'; ctxR.font = '10px Inter'; ctxR.textAlign = 'center';
             const step = state.zoom > 30 ? 1 : 5;
-            for (let i = 0; i <= state.duration; i += step) {
-                const x = i * state.zoom; ctxR.fillRect(x, 14, 1, 10); ctxR.fillText(formatTime(i), x, 10);
-            }
+            for (let i = 0; i <= state.duration; i += step) { const x = i * state.zoom; ctxR.fillRect(x, 14, 1, 10); ctxR.fillText(formatTime(i), x, 10); }
         }
 
         function updatePlayheadUI() {
             const x = state.currentTime * state.zoom;
             document.getElementById('playhead').style.left = `${x}px`;
             const tStr = formatTime(state.currentTime, true);
-            document.getElementById('time-display').innerText = tStr;
-            document.getElementById('playhead-info').innerText = tStr;
-            
+            document.getElementById('time-display').innerText = tStr; document.getElementById('playhead-info').innerText = tStr;
             if (state.isPlaying && !state.isExporting) {
                 const tl = document.getElementById('timeline-content');
                 if (x > tl.scrollLeft + tl.clientWidth - 50) tl.scrollLeft = x - tl.clientWidth / 2;
             }
         }
 
+        function getSnapPoints(ignoreClipId) {
+            let pts = [0, state.currentTime];
+            state.clips.forEach(c => { if (c.id !== ignoreClipId) { pts.push(c.start); pts.push(c.start + c.duration); }});
+            return pts;
+        }
+
+        function findSnap(val, pts) {
+            const tol = state.snapTolerancePx / state.zoom;
+            for (let pt of pts) { if (Math.abs(val - pt) < tol) return pt; } return val;
+        }
+
         function startDrag(e) {
             if (e.target.classList.contains('resizer')) return;
-            const clipId = e.currentTarget.dataset.clipId;
-            selectClip(clipId);
+            const clipId = e.currentTarget.dataset.clipId; selectClip(clipId);
             const clip = state.clips.find(c => c.id === clipId);
             state.dragInfo = { type: 'move', clipId, startX: e.clientX, initStart: clip.start };
             document.addEventListener('mousemove', handleDrag); document.addEventListener('mouseup', endDrag);
         }
 
         function startResize(e) {
-            e.stopPropagation();
-            const clipId = e.currentTarget.parentElement.dataset.clipId;
-            selectClip(clipId);
+            e.stopPropagation(); const clipId = e.currentTarget.parentElement.dataset.clipId; selectClip(clipId);
             const clip = state.clips.find(c => c.id === clipId);
             state.dragInfo = { type: 'resize', dir: e.currentTarget.dataset.dir, clipId, startX: e.clientX, initStart: clip.start, initDur: clip.duration, initSrc: clip.sourceStart };
             document.addEventListener('mousemove', handleDrag); document.addEventListener('mouseup', endDrag);
@@ -658,27 +773,30 @@
         function handleDrag(e) {
             if (!state.dragInfo) return;
             const clip = state.clips.find(c => c.id === state.dragInfo.clipId);
-            const delta = (e.clientX - state.dragInfo.startX) / state.zoom;
+            const delta = (e.clientX - state.dragInfo.startX) / state.zoom; const snaps = getSnapPoints(clip.id);
 
             if (state.dragInfo.type === 'move') {
-                clip.start = Math.max(0, state.dragInfo.initStart + delta);
-                const rect = document.getElementById('tracks-container').getBoundingClientRect();
-                const my = e.clientY - rect.top;
-                const trIdx = Math.floor(my / 64);
-                if (trIdx >= 0 && trIdx < state.tracks.length) {
-                    const target = state.tracks[trIdx];
-                    if ((clip.fileType === 'audio' && target.type === 'audio') || (clip.fileType !== 'audio' && target.type === 'video')) {
-                        clip.trackId = target.id;
+                let nStart = Math.max(0, state.dragInfo.initStart + delta);
+                let snappedStart = findSnap(nStart, snaps);
+                if (snappedStart === nStart) { let nEnd = nStart + clip.duration; let snappedEnd = findSnap(nEnd, snaps); if (snappedEnd !== nEnd) nStart = snappedEnd - clip.duration; }
+                clip.start = nStart;
+                
+                const container = document.getElementById('tracks-container'); const rect = container.getBoundingClientRect();
+                const my = e.clientY - rect.top + container.scrollTop; let accY = 0;
+                container.querySelectorAll('.track-lane').forEach(lane => {
+                    const top = lane.offsetTop; const h = lane.offsetHeight;
+                    if (my >= top && my <= top + h) {
+                        const tId = lane.dataset.trackId; const tType = lane.dataset.type;
+                        if ((clip.fileType === 'audio' && tType === 'audio') || (clip.fileType !== 'audio' && tType === 'video')) clip.trackId = tId;
                     }
-                }
+                });
             } else if (state.dragInfo.type === 'resize') {
                 if (state.dragInfo.dir === 'right') {
                     const max = clip.element && clip.element.duration ? clip.element.duration - clip.sourceStart : 60;
-                    clip.duration = Math.max(0.5, Math.min(max, state.dragInfo.initDur + delta));
+                    clip.duration = Math.max(0.5, Math.min(max, findSnap(state.dragInfo.initStart + state.dragInfo.initDur + delta, snaps) - clip.start));
                 } else {
-                    const nStart = Math.max(0, state.dragInfo.initStart + delta);
-                    const diff = nStart - state.dragInfo.initStart;
-                    const nDur = state.dragInfo.initDur - diff;
+                    let nStart = findSnap(Math.max(0, state.dragInfo.initStart + delta), snaps);
+                    const diff = nStart - state.dragInfo.initStart; const nDur = state.dragInfo.initDur - diff;
                     if (nDur > 0.5) { clip.start = nStart; clip.duration = nDur; clip.sourceStart = Math.max(0, state.dragInfo.initSrc + diff); }
                 }
             }
@@ -687,22 +805,18 @@
 
         function endDrag() { state.dragInfo = null; document.removeEventListener('mousemove', handleDrag); document.removeEventListener('mouseup', endDrag); }
 
-        // OPRAVA 2: Důsledná inicializace zvuku pro VŠECHNY klipy
-        function ensureAudioNodes() {
+        function connectAudioNodes() {
             if (!audioCtx) {
                 audioCtx = new AudioContext();
                 mainAudioDest = audioCtx.createMediaStreamDestination();
             }
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            
             state.clips.forEach(c => {
-                // Připojí AudioNode pouze tehdy, pokud ho klip ještě nemá
-                if (c.element && (c.fileType === 'video' || c.fileType === 'audio') && !c.audioNode) {
+                if (c.element && c.fileType !== 'image' && !c.audioNode) {
                     try {
                         c.audioNode = audioCtx.createMediaElementSource(c.element);
-                        c.audioNode.connect(audioCtx.destination); // Repráky
-                        c.audioNode.connect(mainAudioDest); // Export node
-                    } catch(e) { console.warn("Chyba vytvoření audia:", e); }
+                        c.audioNode.connect(audioCtx.destination);
+                        c.audioNode.connect(mainAudioDest);
+                    } catch (e) { console.error("Nelze propojit audio:", e); }
                 }
             });
         }
@@ -711,25 +825,22 @@
             state.isPlaying = !state.isPlaying;
             document.getElementById('playBtn').innerHTML = state.isPlaying ? '<i class="ph-fill ph-pause text-xl"></i>' : '<i class="ph-fill ph-play text-xl"></i>';
             if (state.isPlaying) {
-                ensureAudioNodes();
-            } else {
-                state.clips.forEach(c => c.element && !c.element.paused && c.element.pause());
-            }
+                connectAudioNodes();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+            } else state.clips.forEach(c => c.element && !c.element.paused && c.element.pause());
         }
 
         function seek(time) { state.currentTime = Math.max(0, Math.min(time, state.duration)); updatePlayheadUI(); renderCanvas(); }
         function updateZoom(val) { state.zoom = parseInt(val); renderTimeline(); updateTimeRuler(); updatePlayheadUI(); }
-
         function addTrack(type) {
-            const num = state.tracks.filter(t => t.type === type).length + 1;
-            state.tracks.push({ id: 't' + Date.now(), name: type === 'video' ? `Obraz ${num}` : `Zvuk ${num}`, type });
+            const tObj = { id: 't' + Date.now(), name: (type === 'video' ? `Obraz ` : `Zvuk `) + (state.tracks.filter(t => t.type === type).length + 1), type };
+            if (type === 'video') state.tracks.unshift(tObj); else state.tracks.push(tObj);
             renderTimeline();
         }
-
         function removeTrack(id) {
-            if(state.tracks.length <= 1) return showToast("Musí zůstat alespoň jedna stopa.");
-            state.tracks = state.tracks.filter(t => t.id !== id);
-            state.clips = state.clips.filter(c => c.trackId !== id);
+            const tr = state.tracks.find(t => t.id === id);
+            if(state.tracks.filter(t => t.type === tr.type).length <= 1) return showToast(`Musí zůstat alespoň jedna ${tr.type} stopa.`);
+            state.tracks = state.tracks.filter(t => t.id !== id); state.clips = state.clips.filter(c => c.trackId !== id);
             renderTimeline(); renderCanvas();
         }
 
@@ -740,21 +851,24 @@
         }
 
         function updatePropsPanel() {
-            const pContent = document.getElementById('properties-content');
-            const noSel = document.getElementById('no-selection-msg');
+            const pContent = document.getElementById('properties-content'); const noSel = document.getElementById('no-selection-msg');
             if (!state.selectedClipId) { pContent.classList.add('hidden'); noSel.classList.remove('hidden'); return; }
-
             const clip = state.clips.find(c => c.id === state.selectedClipId);
             pContent.classList.remove('hidden'); noSel.classList.add('hidden');
 
             document.getElementById('prop-name').innerText = clip.name;
+            document.getElementById('prop-type-label').innerText = clip.fileType === 'text' ? 'Textový blok' : 'Soubor';
             document.getElementById('prop-start').innerText = clip.start.toFixed(1);
             document.getElementById('prop-duration').innerText = clip.duration.toFixed(1);
-            document.getElementById('audio-props-container').style.display = clip.fileType !== 'image' ? 'block' : 'none';
+
+            document.getElementById('cat-text').style.display = clip.fileType === 'text' ? 'block' : 'none';
+            document.getElementById('cat-position').style.display = clip.fileType === 'audio' ? 'none' : 'block';
+            document.getElementById('cat-image').style.display = clip.fileType === 'audio' ? 'none' : 'block';
+            document.getElementById('cat-audio').style.display = (clip.fileType === 'audio' || clip.fileType === 'video') ? 'block' : 'none';
 
             for (let p in clip.properties) {
-                if (document.getElementById(`prop-${p.toLowerCase()}`)) document.getElementById(`prop-${p.toLowerCase()}`).value = clip.properties[p];
-                if (document.getElementById(`prop-${p.toLowerCase()}-range`)) document.getElementById(`prop-${p.toLowerCase()}-range`).value = clip.properties[p];
+                const el = document.getElementById(`prop-${p}`); const elR = document.getElementById(`prop-${p}-range`);
+                if (el) el.value = clip.properties[p]; if (elR) elR.value = clip.properties[p];
             }
 
             const kfList = document.getElementById('keyframes-list'); kfList.innerHTML = ''; let hasKf = false;
@@ -773,48 +887,36 @@
 
         function updateProp(p, v) {
             const clip = state.clips.find(c => c.id === state.selectedClipId);
-            if (clip) { clip.properties[p] = isNaN(parseFloat(v)) ? v : parseFloat(v); renderCanvas(); }
+            if (clip) { 
+                clip.properties[p] = (['textContent', 'textColor', 'transitionIn', 'transitionOut', 'blendMode'].includes(p)) ? v : parseFloat(v); 
+                renderCanvas(); 
+            }
         }
 
-        function deleteSelectedClip() {
-            state.clips = state.clips.filter(c => c.id !== state.selectedClipId);
-            selectClip(null); renderTimeline(); renderCanvas();
-        }
+        function deleteSelectedClip() { state.clips = state.clips.filter(c => c.id !== state.selectedClipId); selectClip(null); renderTimeline(); renderCanvas(); }
 
         async function startExport() {
             if (!state.clips.length) return showToast("Není co exportovat.");
             
-            ensureAudioNodes();
-            
-            if (state.isPlaying) togglePlay(); // Reset z předešlého hraní
+            connectAudioNodes();
+            if (audioCtx.state === 'suspended') await audioCtx.resume();
+            if (state.isPlaying) togglePlay();
 
-            state.exportMaxTime = Math.max(...state.clips.map(c => c.start + c.duration), 1);
-            seek(0);
+            state.exportMaxTime = Math.max(...state.clips.map(c => c.start + c.duration), 1); seek(0);
 
-            // Podpora i pro Firefox
-            const cStream = canvas.captureStream ? canvas.captureStream(state.fps) : canvas.mozCaptureStream(state.fps);
-            const aStream = mainAudioDest.stream;
-            
+            const cStream = canvas.captureStream(state.fps); const aStream = mainAudioDest.stream;
             const tracks = [...cStream.getVideoTracks()];
             if (aStream.getAudioTracks().length) tracks.push(...aStream.getAudioTracks());
             const mixedStream = new MediaStream(tracks);
             
-            const options = { mimeType: 'video/webm; codecs=vp9,opus' };
-            try { mediaRecorder = new MediaRecorder(mixedStream, options); } 
-            catch(e) { mediaRecorder = new MediaRecorder(mixedStream); } 
+            try { mediaRecorder = new MediaRecorder(mixedStream, { mimeType: 'video/webm; codecs=vp9,opus' }); } 
+            catch(e) { mediaRecorder = new MediaRecorder(mixedStream); }
 
-            exportChunks = [];
-            state.cancelExportFlag = false;
-
-            mediaRecorder.ondataavailable = e => { if(e.data.size > 0) exportChunks.push(e.data); };
+            exportChunks = []; mediaRecorder.ondataavailable = e => { if(e.data.size > 0) exportChunks.push(e.data); };
             mediaRecorder.onstop = saveExportedFile;
 
-            document.getElementById('export-overlay').classList.remove('hidden');
-            document.getElementById('export-overlay').classList.add('flex');
-            
-            state.isExporting = true;
-            mediaRecorder.start();
-            state.isPlaying = true; 
+            document.getElementById('export-overlay').classList.remove('hidden'); document.getElementById('export-overlay').classList.add('flex');
+            state.isExporting = true; mediaRecorder.start(100); state.isPlaying = true; 
         }
 
         function updateExportUI() {
@@ -824,47 +926,37 @@
         }
 
         function finishExport() {
-            state.isExporting = false; state.isPlaying = false;
-            mediaRecorder.stop();
+            state.isExporting = false; state.isPlaying = false; mediaRecorder.stop();
             state.clips.forEach(c => c.element && !c.element.paused && c.element.pause());
-            document.getElementById('export-overlay').classList.add('hidden');
-            document.getElementById('export-overlay').classList.remove('flex');
+            document.getElementById('export-overlay').classList.add('hidden'); document.getElementById('export-overlay').classList.remove('flex');
             showToast("Zpracovávám soubor...");
         }
 
         function cancelExport() {
-            state.cancelExportFlag = true;
             state.isExporting = false; state.isPlaying = false;
             if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-            state.clips.forEach(c => c.element && !c.element.paused && c.element.pause());
-            document.getElementById('export-overlay').classList.add('hidden');
-            document.getElementById('export-overlay').classList.remove('flex');
+            exportChunks = []; state.clips.forEach(c => c.element && !c.element.paused && c.element.pause());
+            document.getElementById('export-overlay').classList.add('hidden'); document.getElementById('export-overlay').classList.remove('flex');
             showToast("Export zrušen.");
         }
 
         function saveExportedFile() {
-            if (exportChunks.length === 0 || state.cancelExportFlag) return;
+            if (exportChunks.length === 0) return;
             const blob = new Blob(exportChunks, { type: mediaRecorder.mimeType || 'video/webm' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = `WebEdit_Export_${Date.now()}.webm`;
-            a.click();
-            showToast("Video úspěšně uloženo!");
+            const url = URL.createObjectURL(blob); const a = document.createElement('a');
+            a.href = url; a.download = `Export_${Date.now()}.webm`; a.click(); showToast("Video úspěšně uloženo!");
         }
 
         function formatTime(sec, detailed = false) {
-            const m = Math.floor(sec / 60).toString().padStart(2, '0');
-            const s = Math.floor(sec % 60).toString().padStart(2, '0');
+            const m = Math.floor(sec / 60).toString().padStart(2, '0'); const s = Math.floor(sec % 60).toString().padStart(2, '0');
             return detailed ? `${m}:${s}.${Math.floor((sec % 1) * 10)}` : `${m}:${s}`;
         }
 
         function showToast(msg) {
-            const c = document.getElementById('toast-container');
-            const el = document.createElement('div');
+            const c = document.getElementById('toast-container'); const el = document.createElement('div');
             el.className = 'bg-[#272a33] text-white px-4 py-2 rounded shadow-lg border border-gray-700 translate-x-full transition-transform duration-300 flex items-center gap-2';
             el.innerHTML = `<i class="ph-fill ph-check-circle text-green-500"></i> ${msg}`;
-            c.appendChild(el);
-            setTimeout(() => el.style.transform = 'translateX(0)', 10);
+            c.appendChild(el); setTimeout(() => el.style.transform = 'translateX(0)', 10);
             setTimeout(() => { el.style.transform = 'translateX(120%)'; setTimeout(() => el.remove(), 300); }, 3000);
         }
 
