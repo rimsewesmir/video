@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pro Video Editor</title>
+    <title>Pro Video Editor V4.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
@@ -52,6 +52,10 @@
         details > summary { list-style: none; cursor: pointer; }
         details > summary::-webkit-details-marker { display: none; }
         details[open] summary i.ph-caret-right { transform: rotate(90deg); }
+        
+        /* Custom styl pro selecty aby nevyčnívaly */
+        select { outline: none; }
+        select option { background-color: var(--bg-panel); color: white; }
     </style>
 </head>
 <body class="flex flex-col h-screen select-none text-sm">
@@ -59,7 +63,7 @@
     <header class="h-14 bg-[#1a1d24] border-b border-[#272a33] flex items-center justify-between px-4 shrink-0 z-50">
         <div class="flex items-center gap-3">
             <i class="ph-fill ph-video-camera text-indigo-500 text-2xl"></i>
-            <h1 class="font-semibold text-lg tracking-wide">WebEdit Pro V4.1</h1>
+            <h1 class="font-semibold text-lg tracking-wide">WebEdit Pro V4.2</h1>
             <div class="h-6 w-px bg-gray-700 mx-2"></div>
             <button onclick="openSettings()" class="text-gray-400 hover:text-white flex items-center gap-1 transition">
                 <i class="ph ph-gear"></i> Nastavení
@@ -82,7 +86,7 @@
     <div id="top-workspace" class="flex flex-1 overflow-hidden min-h-[200px]">
         
         <main id="preview-area" class="flex-1 flex flex-col bg-[#0f1115] relative p-4 items-center justify-center overflow-hidden min-w-[300px]">
-            <div id="canvas-container" class="relative bg-black rounded-lg shadow-2xl ring-1 ring-[#272a33] flex items-center justify-center" style="max-height: 100%; max-width: 100%; aspect-ratio: 16/9;">
+            <div id="canvas-container" class="relative bg-black rounded-lg shadow-2xl ring-1 ring-[#272a33] flex items-center justify-center overflow-hidden" style="max-height: 100%; max-width: 100%; aspect-ratio: 16/9;">
                 <canvas id="preview-canvas" width="1920" height="1080" class="w-full h-full object-contain"></canvas>
                 
                 <div id="export-overlay" class="absolute inset-0 bg-black/90 hidden flex-col items-center justify-center z-50 backdrop-blur-md rounded-lg">
@@ -109,11 +113,11 @@
         <div class="resizer-x" id="resizer-x"></div>
 
         <aside id="properties-panel" class="w-80 bg-[#1a1d24] border-l border-[#272a33] flex flex-col shrink-0 overflow-y-auto min-w-[250px]">
-            <div class="p-4 border-b border-[#272a33] sticky top-0 bg-[#1a1d24] z-10 flex justify-between items-center">
+            <div class="p-4 border-b border-[#272a33] sticky top-0 bg-[#1a1d24] z-10 flex justify-between items-center shadow-md">
                 <h2 class="font-semibold text-gray-100 flex items-center gap-2"><i class="ph ph-sliders"></i> Vlastnosti</h2>
             </div>
             
-            <div id="properties-content" class="p-4 space-y-4 text-gray-300 hidden">
+            <div id="properties-content" class="p-4 space-y-3 text-gray-300 hidden pb-20">
                 <div class="bg-[#272a33] p-3 rounded-lg border border-gray-700 relative">
                     <div class="text-xs text-gray-400 mb-1" id="prop-type-label">Soubor</div>
                     <div class="truncate font-medium text-white pr-8" id="prop-name">video.mp4</div>
@@ -133,34 +137,57 @@
                 </div>
 
                 <details id="cat-text" class="group hidden">
-                    <summary class="flex items-center gap-2 font-medium text-white bg-[#272a33] p-2 rounded cursor-pointer select-none">
+                    <summary class="flex items-center gap-2 font-medium text-white bg-[#272a33] p-2 rounded cursor-pointer select-none hover:bg-gray-700 transition">
                         <i class="ph ph-caret-right transition-transform text-gray-400"></i>
-                        <i class="ph ph-text-t text-indigo-400"></i> Text
+                        <i class="ph ph-text-t text-indigo-400"></i> Úprava Textu
                     </summary>
-                    <div class="p-2 pt-4 space-y-4 bg-[#0f1115] border-x border-b border-[#272a33] rounded-b -mt-1">
+                    <div class="p-3 space-y-4 bg-[#0f1115] border-x border-b border-[#272a33] rounded-b -mt-1">
                         <div>
                             <label class="text-xs text-gray-400 mb-1 block">Obsah textu</label>
                             <textarea id="prop-textContent" class="w-full bg-[#1a1d24] border border-gray-700 rounded p-2 text-white" rows="2" oninput="updateProp('textContent', this.value)"></textarea>
                         </div>
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs text-gray-400 mb-1 block">Písmo</label>
+                                <select id="prop-fontFamily" class="w-full bg-[#1a1d24] border border-gray-700 rounded p-1.5 text-white text-xs" onchange="updateProp('fontFamily', this.value)">
+                                    <option value="Inter">Inter (Výchozí)</option>
+                                    <option value="Arial">Arial</option>
+                                    <option value="Courier New">Courier New (Mono)</option>
+                                    <option value="Impact">Impact (Tučné)</option>
+                                    <option value="'Comic Sans MS'">Comic Sans</option>
+                                </select>
+                            </div>
                             <div>
                                 <label class="text-xs text-gray-400 mb-1 block">Velikost</label>
                                 <input type="number" id="prop-fontSize" class="w-full bg-[#1a1d24] border border-gray-700 rounded p-1.5 text-white" onchange="updateProp('fontSize', this.value)">
                             </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="text-xs text-gray-400 mb-1 block">Barva</label>
+                                <label class="text-xs text-gray-400 mb-1 block">Barva textu</label>
                                 <input type="color" id="prop-textColor" class="w-full h-8 bg-[#1a1d24] border border-gray-700 rounded cursor-pointer" onchange="updateProp('textColor', this.value)">
                             </div>
+                            <div>
+                                <label class="text-xs text-gray-400 mb-1 block">Barva pozadí</label>
+                                <div class="flex items-center gap-1">
+                                    <input type="color" id="prop-textBg" class="flex-1 h-8 bg-[#1a1d24] border border-gray-700 rounded cursor-pointer" onchange="updateProp('textBg', this.value)">
+                                    <button onclick="updateProp('textBg', 'transparent'); document.getElementById('prop-textBg').value='#000000'" class="bg-red-500/20 text-red-400 px-2 py-1 rounded text-xs border border-red-500/30" title="Průhledné"><i class="ph ph-prohibit"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Stín textu (Zvýraznění)</label>
+                            <input type="range" id="prop-textShadow" min="0" max="30" step="1" oninput="updateProp('textShadow', this.value)">
                         </div>
                     </div>
                 </details>
 
                 <details id="cat-position" class="group">
-                    <summary class="flex items-center gap-2 font-medium text-white bg-[#272a33] p-2 rounded cursor-pointer select-none">
+                    <summary class="flex items-center gap-2 font-medium text-white bg-[#272a33] p-2 rounded cursor-pointer select-none hover:bg-gray-700 transition">
                         <i class="ph ph-caret-right transition-transform text-gray-400"></i>
-                        <i class="ph ph-arrows-out-cardinal text-indigo-400"></i> Pozice a Transformace
+                        <i class="ph ph-arrows-out-cardinal text-indigo-400"></i> Pozice a Měřítko
                     </summary>
-                    <div class="p-2 pt-4 space-y-4 bg-[#0f1115] border-x border-b border-[#272a33] rounded-b -mt-1">
+                    <div class="p-3 space-y-4 bg-[#0f1115] border-x border-b border-[#272a33] rounded-b -mt-1">
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="text-xs text-gray-400 mb-1 block flex justify-between">Pozice X <button onclick="addKeyframe('x')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
@@ -172,10 +199,10 @@
                             </div>
                         </div>
                         <div>
-                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Velikost (Měřítko) <button onclick="addKeyframe('scale')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Velikost (Scale) <button onclick="addKeyframe('scale')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
                             <div class="flex items-center gap-3">
                                 <input type="range" id="prop-scale-range" min="0" max="3" step="0.05" oninput="updateProp('scale', this.value); document.getElementById('prop-scale').value = this.value">
-                                <input type="number" id="prop-scale" step="0.05" class="w-16 bg-[#1a1d24] border border-gray-700 rounded p-1 text-center" onchange="updateProp('scale', this.value); document.getElementById('prop-scale-range').value = this.value">
+                                <input type="number" id="prop-scale" step="0.05" class="w-16 bg-[#1a1d24] border border-gray-700 rounded p-1 text-center text-xs" onchange="updateProp('scale', this.value); document.getElementById('prop-scale-range').value = this.value">
                             </div>
                         </div>
                         <div>
@@ -185,36 +212,91 @@
                     </div>
                 </details>
 
-                <details id="cat-image" class="group">
-                    <summary class="flex items-center gap-2 font-medium text-white bg-[#272a33] p-2 rounded cursor-pointer select-none">
+                <details id="cat-animations" class="group">
+                    <summary class="flex items-center gap-2 font-medium text-white bg-[#272a33] p-2 rounded cursor-pointer select-none hover:bg-gray-700 transition">
                         <i class="ph ph-caret-right transition-transform text-gray-400"></i>
-                        <i class="ph ph-drop-half-bottom text-indigo-400"></i> Obraz a Vzhled
+                        <i class="ph ph-magic-wand text-indigo-400"></i> Animace a Přechody
                     </summary>
-                    <div class="p-2 pt-4 space-y-4 bg-[#0f1115] border-x border-b border-[#272a33] rounded-b -mt-1">
+                    <div class="p-3 space-y-4 bg-[#0f1115] border-x border-b border-[#272a33] rounded-b -mt-1">
                         <div>
-                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Průhlednost <button onclick="addKeyframe('opacity')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
-                            <input type="range" id="prop-opacity" min="0" max="1" step="0.05" oninput="updateProp('opacity', this.value)">
+                            <label class="text-xs text-gray-400 mb-1 block"><i class="ph ph-arrow-right-down"></i> Přechod IN (Na začátku)</label>
+                            <select id="prop-transition-in" class="w-full bg-[#1a1d24] border border-gray-700 rounded p-1.5 text-white text-xs" onchange="updateProp('transitionIn', this.value)">
+                                <option value="none">Žádný</option>
+                                <option value="fade">Prolínačka (Fade)</option>
+                                <option value="slideL">Zprava doleva (Slide Left)</option>
+                                <option value="slideR">Zleva doprava (Slide Right)</option>
+                                <option value="slideU">Zespodu nahoru (Slide Up)</option>
+                                <option value="slideD">Zhora dolů (Slide Down)</option>
+                                <option value="zoomIn">Zoom In (Přiblížení)</option>
+                                <option value="spinIn">Roztočení (Spin In)</option>
+                                <option value="blurIn">Zaostření (Blur In)</option>
+                            </select>
                         </div>
                         <div>
-                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Jas <button onclick="addKeyframe('brightness')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
+                            <label class="text-xs text-gray-400 mb-1 block"><i class="ph ph-arrow-up-right"></i> Přechod OUT (Na konci)</label>
+                            <select id="prop-transition-out" class="w-full bg-[#1a1d24] border border-gray-700 rounded p-1.5 text-white text-xs" onchange="updateProp('transitionOut', this.value)">
+                                <option value="none">Žádný</option>
+                                <option value="fade">Prolínačka (Fade)</option>
+                                <option value="slideL">Doleva (Slide Left)</option>
+                                <option value="slideR">Doprava (Slide Right)</option>
+                                <option value="slideU">Nahoru (Slide Up)</option>
+                                <option value="slideD">Dolů (Slide Down)</option>
+                                <option value="zoomOut">Zoom Out (Oddálení)</option>
+                                <option value="spinOut">Zatočení (Spin Out)</option>
+                                <option value="blurOut">Rozostření (Blur Out)</option>
+                            </select>
+                        </div>
+                    </div>
+                </details>
+
+                <details id="cat-color" class="group">
+                    <summary class="flex items-center gap-2 font-medium text-white bg-[#272a33] p-2 rounded cursor-pointer select-none hover:bg-gray-700 transition">
+                        <i class="ph ph-caret-right transition-transform text-gray-400"></i>
+                        <i class="ph ph-palette text-indigo-400"></i> Barvy a Filtry
+                    </summary>
+                    <div class="p-3 space-y-3 bg-[#0f1115] border-x border-b border-[#272a33] rounded-b -mt-1">
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Průhlednost (Opacity) <button onclick="addKeyframe('opacity')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
+                            <input type="range" id="prop-opacity" min="0" max="1" step="0.05" oninput="updateProp('opacity', this.value)">
+                        </div>
+                        <div class="h-px bg-gray-800 my-2"></div>
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Jas (Brightness) <button onclick="addKeyframe('brightness')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
                             <input type="range" id="prop-brightness" min="0" max="200" step="1" oninput="updateProp('brightness', this.value)">
                         </div>
                         <div>
-                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Kontrast <button onclick="addKeyframe('contrast')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Kontrast (Contrast) <button onclick="addKeyframe('contrast')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
                             <input type="range" id="prop-contrast" min="0" max="200" step="1" oninput="updateProp('contrast', this.value)">
                         </div>
                         <div>
-                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Rozostření (Blur) <button onclick="addKeyframe('blur')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
-                            <input type="range" id="prop-blur" min="0" max="50" step="1" oninput="updateProp('blur', this.value)">
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Sytost barev (Saturate) <button onclick="addKeyframe('saturate')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
+                            <input type="range" id="prop-saturate" min="0" max="300" step="1" oninput="updateProp('saturate', this.value)">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Barevný odstín (Hue) <button onclick="addKeyframe('hue')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
+                            <input type="range" id="prop-hue" min="0" max="360" step="1" oninput="updateProp('hue', this.value)">
+                        </div>
+                        <div class="h-px bg-gray-800 my-2"></div>
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Černobíle (Grayscale) <button onclick="addKeyframe('grayscale')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
+                            <input type="range" id="prop-grayscale" min="0" max="100" step="1" oninput="updateProp('grayscale', this.value)">
                         </div>
                         <div>
                             <label class="text-xs text-gray-400 mb-1 block flex justify-between">Sépia <button onclick="addKeyframe('sepia')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
                             <input type="range" id="prop-sepia" min="0" max="100" step="1" oninput="updateProp('sepia', this.value)">
                         </div>
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Inverze barev <button onclick="addKeyframe('invert')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
+                            <input type="range" id="prop-invert" min="0" max="100" step="1" oninput="updateProp('invert', this.value)">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Rozostření (Blur) <button onclick="addKeyframe('blur')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
+                            <input type="range" id="prop-blur" min="0" max="50" step="1" oninput="updateProp('blur', this.value)">
+                        </div>
                         <div class="pt-2 border-t border-gray-800">
                             <label class="text-xs text-gray-400 mb-1 block">Režim prolnutí (Blend Mode)</label>
-                            <select id="prop-blendMode" class="w-full bg-[#1a1d24] border border-gray-700 rounded p-1.5 text-white" onchange="updateProp('blendMode', this.value)">
-                                <option value="source-over">Normální (Základní)</option>
+                            <select id="prop-blendMode" class="w-full bg-[#1a1d24] border border-gray-700 rounded p-1.5 text-white text-xs" onchange="updateProp('blendMode', this.value)">
+                                <option value="source-over">Normální</option>
                                 <option value="multiply">Násobit (Multiply)</option>
                                 <option value="screen">Závoj (Screen)</option>
                                 <option value="overlay">Překrytí (Overlay)</option>
@@ -222,48 +304,24 @@
                                 <option value="lighten">Zesvětlit (Lighten)</option>
                             </select>
                         </div>
-                        <div class="pt-2 border-t border-gray-800">
-                            <label class="text-xs text-gray-400 mb-1 block"><i class="ph ph-magic-wand"></i> Přechod In (Začátek)</label>
-                            <select id="prop-transition-in" class="w-full bg-[#1a1d24] border border-gray-700 rounded p-1.5 text-white" onchange="updateProp('transitionIn', this.value)">
-                                <option value="none">Žádný</option>
-                                <option value="fade">Prolínačka (Fade)</option>
-                                <option value="slideL">Zprava (Slide L)</option>
-                                <option value="slideR">Zleva (Slide R)</option>
-                                <option value="slideU">Zespodu (Slide U)</option>
-                                <option value="slideD">Zhora (Slide D)</option>
-                                <option value="zoomIn">Zoom In</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="text-xs text-gray-400 mb-1 block"><i class="ph ph-magic-wand"></i> Přechod Out (Konec)</label>
-                            <select id="prop-transition-out" class="w-full bg-[#1a1d24] border border-gray-700 rounded p-1.5 text-white" onchange="updateProp('transitionOut', this.value)">
-                                <option value="none">Žádný</option>
-                                <option value="fade">Prolínačka (Fade)</option>
-                                <option value="slideL">Doleva (Slide L)</option>
-                                <option value="slideR">Doprava (Slide R)</option>
-                                <option value="slideU">Nahoru (Slide U)</option>
-                                <option value="slideD">Dolů (Slide D)</option>
-                                <option value="zoomOut">Zoom Out</option>
-                            </select>
-                        </div>
                     </div>
                 </details>
 
                 <details id="cat-audio" class="group">
-                    <summary class="flex items-center gap-2 font-medium text-white bg-[#272a33] p-2 rounded cursor-pointer select-none">
+                    <summary class="flex items-center gap-2 font-medium text-white bg-[#272a33] p-2 rounded cursor-pointer select-none hover:bg-gray-700 transition">
                         <i class="ph ph-caret-right transition-transform text-gray-400"></i>
                         <i class="ph ph-speaker-high text-indigo-400"></i> Zvuk
                     </summary>
-                    <div class="p-2 pt-4 space-y-4 bg-[#0f1115] border-x border-b border-[#272a33] rounded-b -mt-1">
+                    <div class="p-3 space-y-4 bg-[#0f1115] border-x border-b border-[#272a33] rounded-b -mt-1">
                         <div>
                             <label class="text-xs text-gray-400 mb-1 block flex justify-between">Hlasitost <button onclick="addKeyframe('volume')" class="text-indigo-400 hover:text-indigo-300"><i class="ph ph-diamonds-four"></i></button></label>
                             <input type="range" id="prop-volume" min="0" max="1" step="0.05" oninput="updateProp('volume', this.value)">
                         </div>
                         <div>
-                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Výška / Rychlost</label>
+                            <label class="text-xs text-gray-400 mb-1 block flex justify-between">Rychlost / Výška (Pitch)</label>
                             <div class="flex items-center gap-3">
                                 <input type="range" id="prop-pitch-range" min="0.5" max="2" step="0.1" oninput="updateProp('pitch', this.value); document.getElementById('prop-pitch').value = this.value">
-                                <input type="number" id="prop-pitch" step="0.1" class="w-16 bg-[#1a1d24] border border-gray-700 rounded p-1 text-center" onchange="updateProp('pitch', this.value); document.getElementById('prop-pitch-range').value = this.value">
+                                <input type="number" id="prop-pitch" step="0.1" class="w-16 bg-[#1a1d24] border border-gray-700 rounded p-1 text-center text-xs" onchange="updateProp('pitch', this.value); document.getElementById('prop-pitch-range').value = this.value">
                             </div>
                         </div>
                     </div>
@@ -293,6 +351,12 @@
             <div class="flex items-center gap-3">
                 <button onclick="addTrack('video')" class="text-xs text-gray-300 hover:text-white bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/30 px-3 py-1.5 rounded transition flex items-center gap-1"><i class="ph ph-video-camera"></i> + Obraz</button>
                 <button onclick="addTrack('audio')" class="text-xs text-gray-300 hover:text-white bg-green-600/20 hover:bg-green-600/40 border border-green-500/30 px-3 py-1.5 rounded transition flex items-center gap-1"><i class="ph ph-music-note"></i> + Zvuk</button>
+                <div class="h-4 w-px bg-gray-600 mx-2"></div>
+                
+                <button onclick="toggleMagnet()" id="magnet-btn" class="text-indigo-400 hover:text-indigo-300 bg-indigo-500/20 px-2 py-1.5 rounded transition flex items-center gap-1 text-xs border border-indigo-500/30" title="Přichytávání ke klipům">
+                    <i class="ph-fill ph-magnet"></i> Magnet ZAP
+                </button>
+
                 <div class="h-4 w-px bg-gray-600 mx-2"></div>
                 <div class="flex items-center gap-2 text-gray-400">
                     <i class="ph ph-magnifying-glass-minus"></i>
@@ -333,15 +397,15 @@
                         <input type="number" id="set-height" value="1080" class="w-full bg-[#0f1115] border border-gray-700 rounded p-2 text-white">
                     </div>
                     <div class="flex gap-2 mt-2">
-                        <button onclick="applyPreset(1920, 1080)" class="text-xs bg-[#272a33] hover:bg-gray-600 px-2 py-1 rounded">FHD</button>
-                        <button onclick="applyPreset(1080, 1920)" class="text-xs bg-[#272a33] hover:bg-gray-600 px-2 py-1 rounded">TikTok</button>
-                        <button onclick="applyPreset(1080, 1080)" class="text-xs bg-[#272a33] hover:bg-gray-600 px-2 py-1 rounded">Čtverec</button>
+                        <button onclick="applyPreset(1920, 1080)" class="text-xs bg-[#272a33] hover:bg-gray-600 px-2 py-1 rounded">FHD (16:9)</button>
+                        <button onclick="applyPreset(1080, 1920)" class="text-xs bg-[#272a33] hover:bg-gray-600 px-2 py-1 rounded">TikTok (9:16)</button>
+                        <button onclick="applyPreset(1080, 1080)" class="text-xs bg-[#272a33] hover:bg-gray-600 px-2 py-1 rounded">Čtverec (1:1)</button>
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1">FPS</label>
+                    <label class="block text-xs text-gray-400 mb-1">Snímková frekvence (FPS)</label>
                     <select id="set-fps" class="w-full bg-[#0f1115] border border-gray-700 rounded p-2 text-white outline-none">
-                        <option value="24">24 FPS</option><option value="30" selected>30 FPS</option><option value="60">60 FPS</option>
+                        <option value="24">24 FPS (Film)</option><option value="30" selected>30 FPS (Standard)</option><option value="60">60 FPS (Plynulé)</option>
                     </select>
                 </div>
                 <div>
@@ -360,8 +424,8 @@
 
     <script>
         const state = {
-            currentTime: 0, isPlaying: false, duration: 60, zoom: 50, snapTolerancePx: 12,
-            width: 1920, height: 1080, fps: 30, bgColor: '#000000',
+            currentTime: 0, isPlaying: false, duration: 60, zoom: 50, snapTolerancePx: 15,
+            width: 1920, height: 1080, fps: 30, bgColor: '#000000', useMagnet: true,
             tracks: [
                 { id: 'v1', name: 'Obraz 1', type: 'video' },
                 { id: 'a1', name: 'Zvuk 1', type: 'audio' }
@@ -392,12 +456,10 @@
 
         function setupKeyboardShortcuts() {
             window.addEventListener('keydown', (e) => {
-                // Ignore if user is typing in inputs
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-                
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
                 if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
                 if (e.code === 'KeyS') { e.preventDefault(); splitClip(); }
-                if (e.code === 'Delete') { e.preventDefault(); deleteSelectedClip(); }
+                if (e.code === 'Delete' || e.code === 'Backspace') { e.preventDefault(); deleteSelectedClip(); }
             });
         }
 
@@ -411,6 +473,20 @@
                 if (isResizingY) tlArea.style.height = Math.max(150, Math.min(document.body.clientHeight - e.clientY - 3, document.body.clientHeight - 200)) + 'px';
             });
             document.addEventListener('mouseup', () => { if(isResizingX || isResizingY) updateTimeRuler(); isResizingX = false; isResizingY = false; });
+        }
+
+        function toggleMagnet() {
+            state.useMagnet = !state.useMagnet;
+            const btn = document.getElementById('magnet-btn');
+            if (state.useMagnet) {
+                btn.innerHTML = '<i class="ph-fill ph-magnet"></i> Magnet ZAP';
+                btn.className = 'text-indigo-400 hover:text-indigo-300 bg-indigo-500/20 px-2 py-1.5 rounded transition flex items-center gap-1 text-xs border border-indigo-500/30';
+                showToast("Magnet (přichytávání) ZAPNUT");
+            } else {
+                btn.innerHTML = '<i class="ph ph-magnet"></i> Magnet VYP';
+                btn.className = 'text-gray-400 hover:text-gray-300 bg-gray-700/50 px-2 py-1.5 rounded transition flex items-center gap-1 text-xs border border-gray-600';
+                showToast("Magnet VYPnut. Volný pohyb.");
+            }
         }
 
         function openSettings() { document.getElementById('settings-modal').classList.remove('hidden'); }
@@ -431,12 +507,23 @@
             addTrack(type); return state.tracks[state.tracks.length - 1].id;
         }
 
+        // Definice výchozích vlastností pro nový klip (všechny filtry a efekty)
+        function getDefaultProperties() {
+            return { 
+                x: state.width/2, y: state.height/2, scale: 1, rotation: 0, opacity: 1, 
+                brightness: 100, contrast: 100, saturate: 100, hue: 0, grayscale: 0, invert: 0, blur: 0, sepia: 0, 
+                blendMode: 'source-over', volume: 1, pitch: 1, transitionIn: 'none', transitionOut: 'none',
+                // Text specifics
+                textContent: 'Váš Text', fontSize: 120, textColor: '#ffffff', fontFamily: 'Inter', textBg: 'transparent', textShadow: 0
+            };
+        }
+
         function addTextClip() {
             const clip = {
                 id: 'text_' + Date.now(), name: 'Nový Text', fileType: 'text',
                 start: state.currentTime, duration: 5, sourceStart: 0,
                 trackId: getTargetTrackId('video'), color: 'bg-purple-600',
-                properties: { textContent: 'Váš Text', fontSize: 120, textColor: '#ffffff', x: state.width/2, y: state.height/2, scale: 1, rotation: 0, opacity: 1, brightness: 100, contrast: 100, blur: 0, sepia: 0, blendMode: 'source-over', transitionIn: 'none', transitionOut: 'none' },
+                properties: getDefaultProperties(),
                 keyframes: {}
             };
             state.clips.push(clip); showToast('Text přidán'); renderTimeline(); renderCanvas(); selectClip(clip.id);
@@ -451,7 +538,7 @@
                     url: URL.createObjectURL(file), start: state.currentTime, duration: 5, sourceStart: 0,
                     trackId: getTargetTrackId(isAudio ? 'audio' : 'video'), color: isVideo ? 'bg-blue-600' : isAudio ? 'bg-green-600' : 'bg-orange-600',
                     element: null, audioNode: null,
-                    properties: { x: state.width/2, y: state.height/2, scale: 1, rotation: 0, opacity: 1, brightness: 100, contrast: 100, blur: 0, sepia: 0, blendMode: 'source-over', volume: 1, pitch: 1, transitionIn: 'none', transitionOut: 'none' },
+                    properties: getDefaultProperties(),
                     keyframes: {}
                 };
                 if (isVideo || isAudio) {
@@ -470,9 +557,7 @@
 
         function cloneMediaElement(clip) {
             if (clip.fileType === 'text') return null;
-            if (clip.fileType === 'image') {
-                const el = new Image(); el.src = clip.url; el.crossOrigin = 'anonymous'; return el;
-            }
+            if (clip.fileType === 'image') { const el = new Image(); el.src = clip.url; el.crossOrigin = 'anonymous'; return el; }
             const el = document.createElement(clip.fileType);
             el.src = clip.url; el.crossOrigin = 'anonymous'; return el;
         }
@@ -487,8 +572,6 @@
             }
 
             const splitOffset = state.currentTime - clip.start;
-            
-            // Vytvoření nového klipu (druhá část)
             const newClip = {
                 id: 'clip_' + Date.now() + Math.floor(Math.random() * 1000),
                 name: clip.name + " (střih)", fileType: clip.fileType,
@@ -500,14 +583,10 @@
                 properties: JSON.parse(JSON.stringify(clip.properties)),
                 keyframes: JSON.parse(JSON.stringify(clip.keyframes))
             };
-
-            // Zkrácení původního klipu
             clip.duration = splitOffset;
-
             state.clips.push(newClip);
             showToast("Klip byl rozstřižen.");
-            renderTimeline(); renderCanvas();
-            selectClip(newClip.id);
+            renderTimeline(); renderCanvas(); selectClip(newClip.id);
         }
 
         function duplicateClip() {
@@ -516,17 +595,14 @@
             const newClip = {
                 id: 'clip_' + Date.now() + Math.floor(Math.random() * 1000),
                 name: clip.name + " (kopie)", fileType: clip.fileType,
-                url: clip.url, start: clip.start + clip.duration, // Vloží hned za
+                url: clip.url, start: clip.start + clip.duration,
                 duration: clip.duration, sourceStart: clip.sourceStart,
                 trackId: clip.trackId, color: clip.color,
                 element: cloneMediaElement(clip), audioNode: null,
                 properties: JSON.parse(JSON.stringify(clip.properties)),
                 keyframes: JSON.parse(JSON.stringify(clip.keyframes))
             };
-            state.clips.push(newClip);
-            showToast("Klip byl duplikován.");
-            renderTimeline(); renderCanvas();
-            selectClip(newClip.id);
+            state.clips.push(newClip); showToast("Klip byl duplikován."); renderTimeline(); renderCanvas(); selectClip(newClip.id);
         }
 
         function renderLoop(timestamp) {
@@ -553,17 +629,14 @@
 
             const activeClips = state.clips.filter(c => state.currentTime >= c.start && state.currentTime < c.start + c.duration);
             activeClips.sort((a, b) => state.tracks.findIndex(t => t.id === b.trackId) - state.tracks.findIndex(t => t.id === a.trackId));
-            activeClips.reverse(); // Bottom track renders first (background)
+            activeClips.reverse();
 
             activeClips.forEach(clip => {
                 if (clip.element && (clip.fileType === 'video' || clip.fileType === 'audio')) {
                     const pitch = getInterp(clip, 'pitch', state.currentTime) || 1;
                     if (clip.element.playbackRate !== pitch) { clip.element.playbackRate = pitch; clip.element.preservesPitch = false; }
-
                     const elapsedInClip = (state.currentTime - clip.start) * pitch;
                     const targetTime = clip.sourceStart + elapsedInClip;
-                    
-                    // Relaxed sync for multi-layer smoothness
                     const diff = Math.abs(clip.element.currentTime - targetTime);
                     if (diff > 0.3) clip.element.currentTime = targetTime;
                     
@@ -584,6 +657,10 @@
                 let op = getInterp(clip, 'opacity', state.currentTime);
                 let br = getInterp(clip, 'brightness', state.currentTime);
                 let ct = getInterp(clip, 'contrast', state.currentTime);
+                let sat = getInterp(clip, 'saturate', state.currentTime);
+                let hue = getInterp(clip, 'hue', state.currentTime);
+                let gray = getInterp(clip, 'grayscale', state.currentTime);
+                let inv = getInterp(clip, 'invert', state.currentTime);
                 let blr = getInterp(clip, 'blur', state.currentTime);
                 let sep = getInterp(clip, 'sepia', state.currentTime);
                 
@@ -593,6 +670,7 @@
                 const tInClip = state.currentTime - clip.start;
                 const tLeft = (clip.start + clip.duration) - state.currentTime;
 
+                // Animace IN
                 if (tIn !== 'none' && tInClip < tDur) {
                     const ease = tInClip / tDur;
                     if(tIn==='fade') dOp = ease;
@@ -601,14 +679,20 @@
                     if(tIn==='slideU') dy = state.height * (1-ease);
                     if(tIn==='slideD') dy = -state.height * (1-ease);
                     if(tIn==='zoomIn') dScale = ease;
-                } else if (tOut !== 'none' && tLeft < tDur) {
-                    const ease = tLeft / tDur;
+                    if(tIn==='spinIn') { dScale = ease; rot += 360 * (1-ease); dOp = ease; }
+                    if(tIn==='blurIn') { blr += 20 * (1-ease); dOp = ease; }
+                } 
+                // Animace OUT
+                else if (tOut !== 'none' && tLeft < tDur) {
+                    const ease = tLeft / tDur; // Jde od 1 k 0
                     if(tOut==='fade') dOp = ease;
                     if(tOut==='slideL') dx = -state.width * (1-ease);
                     if(tOut==='slideR') dx = state.width * (1-ease);
                     if(tOut==='slideU') dy = -state.height * (1-ease);
                     if(tOut==='slideD') dy = state.height * (1-ease);
                     if(tOut==='zoomOut') dScale = ease;
+                    if(tOut==='spinOut') { dScale = ease; rot -= 360 * (1-ease); dOp = ease; }
+                    if(tOut==='blurOut') { blr += 20 * (1-ease); dOp = ease; }
                 }
 
                 ctx.globalCompositeOperation = clip.properties.blendMode || 'source-over';
@@ -617,16 +701,42 @@
                 ctx.scale(scale * dScale, scale * dScale);
                 ctx.globalAlpha = Math.max(0, Math.min(1, op * dOp));
                 
-                let filters = `brightness(${br}%) contrast(${ct}%)`;
+                // Generování pokročilých filtrů
+                let filters = `brightness(${br}%) contrast(${ct}%) saturate(${sat}%) hue-rotate(${hue}deg) grayscale(${gray}%) invert(${inv}%)`;
                 if(blr > 0) filters += ` blur(${blr}px)`;
                 if(sep > 0) filters += ` sepia(${sep}%)`;
                 ctx.filter = filters;
 
                 if (clip.fileType === 'text') {
-                    ctx.font = `bold ${clip.properties.fontSize || 120}px Inter, sans-serif`;
+                    const fontSize = clip.properties.fontSize || 120;
+                    const fontFamily = clip.properties.fontFamily || 'Inter';
+                    ctx.font = `bold ${fontSize}px ${fontFamily}, sans-serif`;
+                    ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+                    
+                    const textContent = clip.properties.textContent || '';
+                    
+                    // Pozadí textu
+                    const bgCol = clip.properties.textBg;
+                    if (bgCol && bgCol !== 'transparent' && bgCol !== '#00000000') {
+                        const metrics = ctx.measureText(textContent);
+                        const pad = fontSize * 0.2; // dynamický padding
+                        ctx.fillStyle = bgCol;
+                        ctx.fillRect(-metrics.width/2 - pad, -fontSize/2 - pad, metrics.width + pad*2, fontSize + pad*2);
+                    }
+
+                    // Stín textu
+                    const shadow = clip.properties.textShadow || 0;
+                    if (shadow > 0) {
+                        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                        ctx.shadowBlur = shadow;
+                        ctx.shadowOffsetX = shadow / 3;
+                        ctx.shadowOffsetY = shadow / 3;
+                    }
+
                     ctx.fillStyle = clip.properties.textColor || '#ffffff';
-                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                    ctx.fillText(clip.properties.textContent || '', 0, 0);
+                    ctx.fillText(textContent, 0, 0);
+                    ctx.shadowColor = 'transparent'; // Reset pro další prvky
+
                 } else if (clip.element && (clip.fileType === 'image' || clip.element.readyState >= 2)) {
                     let dw = clip.fileType === 'video' ? clip.element.videoWidth : clip.element.width;
                     let dh = clip.fileType === 'video' ? clip.element.videoHeight : clip.element.height;
@@ -690,7 +800,7 @@
                     <span class="truncate" title="${t.name}">${t.name}</span>
                     <div class="flex items-center gap-1">
                         <i class="ph ${t.type === 'video' ? 'ph-video-camera' : 'ph-music-note'} opacity-50"></i>
-                        <button onclick="removeTrack('${t.id}')" class="hover:text-red-400 ml-1" title="Smazat"><i class="ph ph-trash"></i></button>
+                        <button onclick="removeTrack('${t.id}')" class="hover:text-red-400 ml-1" title="Smazat stopu"><i class="ph ph-trash"></i></button>
                     </div>
                 </div>`;
             
@@ -745,12 +855,14 @@
         }
 
         function getSnapPoints(ignoreClipId) {
+            if (!state.useMagnet) return [];
             let pts = [0, state.currentTime];
             state.clips.forEach(c => { if (c.id !== ignoreClipId) { pts.push(c.start); pts.push(c.start + c.duration); }});
             return pts;
         }
 
         function findSnap(val, pts) {
+            if (!state.useMagnet) return val;
             const tol = state.snapTolerancePx / state.zoom;
             for (let pt of pts) { if (Math.abs(val - pt) < tol) return pt; } return val;
         }
@@ -782,7 +894,7 @@
                 clip.start = nStart;
                 
                 const container = document.getElementById('tracks-container'); const rect = container.getBoundingClientRect();
-                const my = e.clientY - rect.top + container.scrollTop; let accY = 0;
+                const my = e.clientY - rect.top + container.scrollTop;
                 container.querySelectorAll('.track-lane').forEach(lane => {
                     const top = lane.offsetTop; const h = lane.offsetHeight;
                     if (my >= top && my <= top + h) {
@@ -806,17 +918,11 @@
         function endDrag() { state.dragInfo = null; document.removeEventListener('mousemove', handleDrag); document.removeEventListener('mouseup', endDrag); }
 
         function connectAudioNodes() {
-            if (!audioCtx) {
-                audioCtx = new AudioContext();
-                mainAudioDest = audioCtx.createMediaStreamDestination();
-            }
+            if (!audioCtx) { audioCtx = new AudioContext(); mainAudioDest = audioCtx.createMediaStreamDestination(); }
             state.clips.forEach(c => {
                 if (c.element && c.fileType !== 'image' && !c.audioNode) {
-                    try {
-                        c.audioNode = audioCtx.createMediaElementSource(c.element);
-                        c.audioNode.connect(audioCtx.destination);
-                        c.audioNode.connect(mainAudioDest);
-                    } catch (e) { console.error("Nelze propojit audio:", e); }
+                    try { c.audioNode = audioCtx.createMediaElementSource(c.element); c.audioNode.connect(audioCtx.destination); c.audioNode.connect(mainAudioDest); } 
+                    catch (e) { console.error("Nelze propojit audio:", e); }
                 }
             });
         }
@@ -824,10 +930,8 @@
         function togglePlay() {
             state.isPlaying = !state.isPlaying;
             document.getElementById('playBtn').innerHTML = state.isPlaying ? '<i class="ph-fill ph-pause text-xl"></i>' : '<i class="ph-fill ph-play text-xl"></i>';
-            if (state.isPlaying) {
-                connectAudioNodes();
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-            } else state.clips.forEach(c => c.element && !c.element.paused && c.element.pause());
+            if (state.isPlaying) { connectAudioNodes(); if (audioCtx.state === 'suspended') audioCtx.resume(); } 
+            else state.clips.forEach(c => c.element && !c.element.paused && c.element.pause());
         }
 
         function seek(time) { state.currentTime = Math.max(0, Math.min(time, state.duration)); updatePlayheadUI(); renderCanvas(); }
@@ -863,9 +967,11 @@
 
             document.getElementById('cat-text').style.display = clip.fileType === 'text' ? 'block' : 'none';
             document.getElementById('cat-position').style.display = clip.fileType === 'audio' ? 'none' : 'block';
-            document.getElementById('cat-image').style.display = clip.fileType === 'audio' ? 'none' : 'block';
+            document.getElementById('cat-animations').style.display = clip.fileType === 'audio' ? 'none' : 'block';
+            document.getElementById('cat-color').style.display = clip.fileType === 'audio' ? 'none' : 'block';
             document.getElementById('cat-audio').style.display = (clip.fileType === 'audio' || clip.fileType === 'video') ? 'block' : 'none';
 
+            // Zapsání hodnot do inputů
             for (let p in clip.properties) {
                 const el = document.getElementById(`prop-${p}`); const elR = document.getElementById(`prop-${p}-range`);
                 if (el) el.value = clip.properties[p]; if (elR) elR.value = clip.properties[p];
@@ -888,7 +994,8 @@
         function updateProp(p, v) {
             const clip = state.clips.find(c => c.id === state.selectedClipId);
             if (clip) { 
-                clip.properties[p] = (['textContent', 'textColor', 'transitionIn', 'transitionOut', 'blendMode'].includes(p)) ? v : parseFloat(v); 
+                const stringProps = ['textContent', 'textColor', 'textBg', 'fontFamily', 'transitionIn', 'transitionOut', 'blendMode'];
+                clip.properties[p] = stringProps.includes(p) ? v : parseFloat(v); 
                 renderCanvas(); 
             }
         }
