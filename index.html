@@ -62,7 +62,7 @@
     <header class="h-14 bg-[#1a1d24] border-b border-[#272a33] flex items-center justify-between px-4 shrink-0 z-50">
         <div class="flex items-center gap-3">
             <i class="ph-fill ph-video-camera text-indigo-500 text-2xl"></i>
-            <h1 class="font-semibold text-lg tracking-wide">WebEdit Pro V4.3</h1>
+            <h1 class="font-semibold text-lg tracking-wide">WebEdit Pro V4.5</h1>
             <div class="h-6 w-px bg-gray-700 mx-2"></div>
             <button onclick="openSettings()" class="text-gray-400 hover:text-white flex items-center gap-1 transition">
                 <i class="ph ph-gear"></i> Nastavení
@@ -101,8 +101,8 @@
             </div>
 
             <div class="h-14 mt-4 bg-[#1a1d24] rounded-full px-6 flex items-center gap-6 shadow-lg border border-[#272a33] shrink-0">
-                <button onclick="seek(0)" class="text-gray-400 hover:text-white transition"><i class="ph-fill ph-skip-back text-xl"></i></button>
-                <button onclick="togglePlay()" class="text-white bg-indigo-500 hover:bg-indigo-600 w-10 h-10 rounded-full flex items-center justify-center transition shadow-lg shadow-indigo-500/20" id="playBtn">
+                <button onclick="seek(0)" class="text-gray-400 hover:text-white transition" title="Na začátek"><i class="ph-fill ph-skip-back text-xl"></i></button>
+                <button onclick="togglePlay()" class="text-white bg-indigo-500 hover:bg-indigo-600 w-10 h-10 rounded-full flex items-center justify-center transition shadow-lg shadow-indigo-500/20" id="playBtn" title="Přehrát (Mezerník)">
                     <i class="ph-fill ph-play text-xl"></i>
                 </button>
                 <span id="time-display" class="font-mono text-gray-300 w-20 text-center">00:00.0</span>
@@ -142,8 +142,8 @@
                     </summary>
                     <div class="p-3 space-y-4 bg-[#0f1115] border-x border-b border-[#272a33] rounded-b -mt-1">
                         <div>
-                            <label class="text-xs text-gray-400 mb-1 block">Obsah textu</label>
-                            <textarea id="prop-textContent" class="w-full bg-[#1a1d24] border border-gray-700 rounded p-2 text-white" rows="2" oninput="updateProp('textContent', this.value)"></textarea>
+                            <label class="text-xs text-gray-400 mb-1 block">Obsah textu (podporuje Enter)</label>
+                            <textarea id="prop-textContent" class="w-full bg-[#1a1d24] border border-gray-700 rounded p-2 text-white" rows="3" oninput="updateProp('textContent', this.value)"></textarea>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
@@ -303,7 +303,7 @@
                 </div>
 
                 <button onclick="deleteSelectedClip()" class="w-full mt-4 py-2 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 rounded transition flex justify-center items-center gap-2 font-medium">
-                    <i class="ph ph-trash"></i> Smazat klip
+                    <i class="ph ph-trash"></i> Smazat klip (Del)
                 </button>
             </div>
             
@@ -411,7 +411,7 @@
         let audioCtx; let mainAudioDest; let mediaRecorder; let exportChunks = [];
 
         function init() {
-            setupResizers(); renderTimeline(); updateTimeRuler(); updateProjectBadge();
+            setupResizers(); updateTimelineDuration(); updateProjectBadge();
             requestAnimationFrame(renderLoop);
             
             document.getElementById('timeline-content').addEventListener('mousedown', (e) => {
@@ -424,12 +424,24 @@
             setupKeyboardShortcuts();
         }
 
+        // Automatické přepočítání celkové délky osy na základě klipů
+        function updateTimelineDuration() {
+            let maxTime = 30;
+            state.clips.forEach(c => { if (c.start + c.duration > maxTime) maxTime = c.start + c.duration; });
+            state.duration = Math.max(60, Math.ceil(maxTime + 10)); // Minimálně 60s, nebo max délka + 10s rezerva
+            renderTimeline();
+            updateTimeRuler();
+        }
+
         function setupKeyboardShortcuts() {
             window.addEventListener('keydown', (e) => {
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
                 if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
                 if (e.code === 'KeyS') { e.preventDefault(); splitClip(); }
                 if (e.code === 'Delete' || e.code === 'Backspace') { e.preventDefault(); deleteSelectedClip(); }
+                // Jemné krokování videa
+                if (e.code === 'ArrowRight') { e.preventDefault(); seek(state.currentTime + 1 / state.fps); }
+                if (e.code === 'ArrowLeft') { e.preventDefault(); seek(state.currentTime - 1 / state.fps); }
             });
         }
 
@@ -494,7 +506,7 @@
                 properties: getDefaultProperties(),
                 keyframes: {}
             };
-            state.clips.push(clip); showToast('Text přidán'); renderTimeline(); renderCanvas(); selectClip(clip.id);
+            state.clips.push(clip); showToast('Text přidán'); updateTimelineDuration(); renderCanvas(); selectClip(clip.id);
         }
 
         function handleFiles(event) {
@@ -505,27 +517,28 @@
                     id: 'clip_' + Date.now() + Math.floor(Math.random() * 1000), name: file.name, fileType: isVideo ? 'video' : isAudio ? 'audio' : 'image',
                     url: URL.createObjectURL(file), start: state.currentTime, duration: 5, sourceStart: 0,
                     trackId: getTargetTrackId(isAudio ? 'audio' : 'video'), color: isVideo ? 'bg-blue-600' : isAudio ? 'bg-green-600' : 'bg-orange-600',
-                    element: null, audioNode: null,
+                    element: null, audioNode: null, gainNode: null,
                     properties: getDefaultProperties(),
                     keyframes: {}
                 };
                 if (isVideo || isAudio) {
                     const el = document.createElement(isVideo ? 'video' : 'audio');
                     el.src = clip.url; el.crossOrigin = 'anonymous'; el.playsInline = true;
-                    el.onloadedmetadata = () => { clip.duration = Math.min(el.duration, 60); renderTimeline(); renderCanvas(); };
+                    el.onloadedmetadata = () => { clip.duration = Math.min(el.duration, 60); updateTimelineDuration(); renderCanvas(); };
                     clip.element = el;
                 } else if (isImage) {
-                    const el = new Image(); el.src = clip.url; el.crossOrigin = 'anonymous';
+                    const el = new Image(); el.crossOrigin = 'anonymous'; el.src = clip.url; 
                     el.onload = () => renderCanvas(); clip.element = el;
                 }
                 state.clips.push(clip); showToast(`Přidáno: ${file.name}`);
+                selectClip(clip.id);
             });
-            renderTimeline();
+            updateTimelineDuration();
         }
 
         function cloneMediaElement(clip) {
             if (clip.fileType === 'text') return null;
-            if (clip.fileType === 'image') { const el = new Image(); el.src = clip.url; el.crossOrigin = 'anonymous'; return el; }
+            if (clip.fileType === 'image') { const el = new Image(); el.crossOrigin = 'anonymous'; el.src = clip.url; return el; }
             const el = document.createElement(clip.fileType);
             el.src = clip.url; el.crossOrigin = 'anonymous'; el.playsInline = true; return el;
         }
@@ -547,14 +560,14 @@
                 duration: clip.duration - splitOffset,
                 sourceStart: clip.sourceStart + splitOffset,
                 trackId: clip.trackId, color: clip.color,
-                element: cloneMediaElement(clip), audioNode: null,
+                element: cloneMediaElement(clip), audioNode: null, gainNode: null,
                 properties: JSON.parse(JSON.stringify(clip.properties)),
                 keyframes: JSON.parse(JSON.stringify(clip.keyframes))
             };
             clip.duration = splitOffset;
             state.clips.push(newClip);
             showToast("Klip rozstřižen.");
-            renderTimeline(); renderCanvas(); selectClip(newClip.id);
+            updateTimelineDuration(); renderCanvas(); selectClip(newClip.id);
         }
 
         function duplicateClip() {
@@ -566,11 +579,11 @@
                 url: clip.url, start: clip.start + clip.duration,
                 duration: clip.duration, sourceStart: clip.sourceStart,
                 trackId: clip.trackId, color: clip.color,
-                element: cloneMediaElement(clip), audioNode: null,
+                element: cloneMediaElement(clip), audioNode: null, gainNode: null,
                 properties: JSON.parse(JSON.stringify(clip.properties)),
                 keyframes: JSON.parse(JSON.stringify(clip.keyframes))
             };
-            state.clips.push(newClip); showToast("Klip duplikován."); renderTimeline(); renderCanvas(); selectClip(newClip.id);
+            state.clips.push(newClip); showToast("Klip duplikován."); updateTimelineDuration(); renderCanvas(); selectClip(newClip.id);
         }
 
         function renderLoop(timestamp) {
@@ -597,7 +610,7 @@
 
             const activeClips = state.clips.filter(c => state.currentTime >= c.start && state.currentTime < c.start + c.duration);
             
-            // OPRAVA 1: Správné řazení Z-indexu. Stopy s vyšším ID (spodní v timeline) se kreslí dříve (jako pozadí)
+            // Správné Z-index řazení (čím nižší v UI stopy, tím více vzadu jako pozadí)
             activeClips.sort((a, b) => {
                 const idxA = state.tracks.findIndex(t => t.id === a.trackId);
                 const idxB = state.tracks.findIndex(t => t.id === b.trackId);
@@ -613,15 +626,22 @@
                     const targetTime = clip.sourceStart + elapsedInClip;
                     const diff = Math.abs(clip.element.currentTime - targetTime);
                     
-                    // OPRAVA 3: Přesnější časování při exportu a řešení odchylek
-                    if (diff > 0.25 || (state.isExporting && diff > 0.1)) {
+                    // Jemnější synchronizace pro zamezení trhání
+                    const isSeeking = !state.isPlaying;
+                    if (isSeeking || diff > 0.5 || (state.isExporting && diff > 0.3)) {
                         clip.element.currentTime = targetTime;
                     }
                     
                     if (state.isPlaying && clip.element.paused) clip.element.play().catch(()=>{});
                     else if (!state.isPlaying && !clip.element.paused) clip.element.pause();
 
-                    clip.element.volume = Math.max(0, Math.min(1, getInterp(clip, 'volume', state.currentTime)));
+                    // Úprava Volume - zjištění, zda jede přes audioCtx nebo přímo
+                    const vol = Math.max(0, Math.min(1, getInterp(clip, 'volume', state.currentTime)));
+                    if (clip.gainNode) {
+                        clip.gainNode.gain.value = vol;
+                    } else {
+                        clip.element.volume = vol;
+                    }
                 }
 
                 if (clip.fileType === 'audio') return;
@@ -688,12 +708,20 @@
                     ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
                     
                     const textContent = clip.properties.textContent || '';
+                    const lines = textContent.split('\n');
+                    const lineHeight = fontSize * 1.2;
+                    
                     const bgCol = clip.properties.textBg;
                     if (bgCol && bgCol !== 'transparent' && bgCol !== '#00000000') {
-                        const metrics = ctx.measureText(textContent);
+                        let maxW = 0;
+                        lines.forEach(line => {
+                            const w = ctx.measureText(line).width;
+                            if (w > maxW) maxW = w;
+                        });
                         const pad = fontSize * 0.2;
+                        const tHeight = lines.length * lineHeight;
                         ctx.fillStyle = bgCol;
-                        ctx.fillRect(-metrics.width/2 - pad, -fontSize/2 - pad, metrics.width + pad*2, fontSize + pad*2);
+                        ctx.fillRect(-maxW/2 - pad, -tHeight/2 - pad, maxW + pad*2, tHeight + pad*2);
                     }
 
                     const shadow = clip.properties.textShadow || 0;
@@ -702,16 +730,22 @@
                     }
 
                     ctx.fillStyle = clip.properties.textColor || '#ffffff';
-                    ctx.fillText(textContent, 0, 0);
+                    const startY = -(lines.length - 1) * lineHeight / 2;
+                    lines.forEach((line, i) => {
+                        ctx.fillText(line, 0, startY + i * lineHeight);
+                    });
                     ctx.shadowColor = 'transparent';
 
                 } else if (clip.element && (clip.fileType === 'image' || clip.element.readyState >= 2)) {
-                    let dw = clip.fileType === 'video' ? clip.element.videoWidth : clip.element.width;
-                    let dh = clip.fileType === 'video' ? clip.element.videoHeight : clip.element.height;
-                    if (dw > state.width || dh > state.height) {
-                        const ratio = Math.min(state.width/dw, state.height/dh); dw *= ratio; dh *= ratio;
+                    let dw = clip.fileType === 'video' ? clip.element.videoWidth : clip.element.naturalWidth || clip.element.width;
+                    let dh = clip.fileType === 'video' ? clip.element.videoHeight : clip.element.naturalHeight || clip.element.height;
+                    
+                    if (dw && dh) { // Prevence chyb na plátně před načtením rozměrů
+                        if (dw > state.width || dh > state.height) {
+                            const ratio = Math.min(state.width/dw, state.height/dh); dw *= ratio; dh *= ratio;
+                        }
+                        ctx.drawImage(clip.element, -dw/2, -dh/2, dw, dh);
                     }
-                    ctx.drawImage(clip.element, -dw/2, -dh/2, dw, dh);
                 }
                 ctx.restore();
             });
@@ -877,22 +911,26 @@
                     if (nDur > 0.5) { clip.start = nStart; clip.duration = nDur; clip.sourceStart = Math.max(0, state.dragInfo.initSrc + diff); }
                 }
             }
-            renderTimeline(); renderCanvas();
+            updatePropsPanel(); renderTimeline(); renderCanvas();
         }
 
-        function endDrag() { state.dragInfo = null; document.removeEventListener('mousemove', handleDrag); document.removeEventListener('mouseup', endDrag); }
+        function endDrag() { state.dragInfo = null; updateTimelineDuration(); document.removeEventListener('mousemove', handleDrag); document.removeEventListener('mouseup', endDrag); }
 
         function connectAudioNodes() {
             if (!audioCtx) { audioCtx = new AudioContext(); mainAudioDest = audioCtx.createMediaStreamDestination(); }
             state.clips.forEach(c => {
                 if (c.element && c.fileType !== 'image' && !c.audioNode) {
-                    try { c.audioNode = audioCtx.createMediaElementSource(c.element); c.audioNode.connect(audioCtx.destination); c.audioNode.connect(mainAudioDest); } 
-                    catch (e) { console.error("Nelze propojit audio:", e); }
+                    try { 
+                        c.audioNode = audioCtx.createMediaElementSource(c.element); 
+                        c.gainNode = audioCtx.createGain(); // Vytvoření speciálního uzlu pro ovládání hlasitosti
+                        c.audioNode.connect(c.gainNode); 
+                        c.gainNode.connect(audioCtx.destination); 
+                        c.gainNode.connect(mainAudioDest); 
+                    } catch (e) { console.error("Nelze propojit audio:", e); }
                 }
             });
         }
 
-        // OPRAVA 2: Funkce, která tajně "odemkne" videa blokovaná prohlížečem
         function unlockAllMediaElements() {
             state.clips.forEach(c => {
                 if (c.element && typeof c.element.play === 'function') {
@@ -900,7 +938,7 @@
                     if (playPromise !== undefined) {
                         playPromise.then(() => {
                             const isActive = state.currentTime >= c.start && state.currentTime < c.start + c.duration;
-                            if (!isActive && !state.isExporting) c.element.pause(); // Pauzneme, pokud zrovna nemá hrát
+                            if (!isActive && !state.isExporting) c.element.pause();
                         }).catch(e => console.warn("Přehrávání bylo blokováno:", e));
                     }
                 }
@@ -913,12 +951,18 @@
             if (state.isPlaying) { 
                 connectAudioNodes(); 
                 if (audioCtx.state === 'suspended') audioCtx.resume(); 
-                unlockAllMediaElements(); 
-            } 
-            else state.clips.forEach(c => c.element && !c.element.paused && c.element.pause());
+                unlockAllMediaElements();
+                lastTimestamp = performance.now();
+            } else {
+                state.clips.forEach(c => c.element && !c.element.paused && c.element.pause());
+            }
         }
 
-        function seek(time) { state.currentTime = Math.max(0, Math.min(time, state.duration)); updatePlayheadUI(); renderCanvas(); }
+        function seek(time) { 
+            state.currentTime = Math.max(0, Math.min(time, state.duration)); 
+            updatePlayheadUI(); renderCanvas(); 
+        }
+        
         function updateZoom(val) { state.zoom = parseInt(val); renderTimeline(); updateTimeRuler(); updatePlayheadUI(); }
         function addTrack(type) {
             const tObj = { id: 't' + Date.now(), name: (type === 'video' ? `Obraz ` : `Zvuk `) + (state.tracks.filter(t => t.type === type).length + 1), type };
@@ -942,6 +986,8 @@
             const pContent = document.getElementById('properties-content'); const noSel = document.getElementById('no-selection-msg');
             if (!state.selectedClipId) { pContent.classList.add('hidden'); noSel.classList.remove('hidden'); return; }
             const clip = state.clips.find(c => c.id === state.selectedClipId);
+            if (!clip) return;
+            
             pContent.classList.remove('hidden'); noSel.classList.add('hidden');
 
             document.getElementById('prop-name').innerText = clip.name;
@@ -983,32 +1029,45 @@
             }
         }
 
-        function deleteSelectedClip() { state.clips = state.clips.filter(c => c.id !== state.selectedClipId); selectClip(null); renderTimeline(); renderCanvas(); }
+        function deleteSelectedClip() { state.clips = state.clips.filter(c => c.id !== state.selectedClipId); selectClip(null); updateTimelineDuration(); renderCanvas(); }
 
         async function startExport() {
             if (!state.clips.length) return showToast("Není co exportovat.");
             
             connectAudioNodes();
             if (audioCtx.state === 'suspended') await audioCtx.resume();
-            unlockAllMediaElements(); // Odemykáme i před exportem
+            unlockAllMediaElements(); 
 
             if (state.isPlaying) togglePlay();
 
-            state.exportMaxTime = Math.max(...state.clips.map(c => c.start + c.duration), 1); seek(0);
+            // Nastavení koncového bodu exportu (+ malá rezerva pro jistotu)
+            state.exportMaxTime = Math.max(...state.clips.map(c => c.start + c.duration), 1) + 0.5; 
+            seek(0);
+
+            document.getElementById('export-overlay').classList.remove('hidden'); document.getElementById('export-overlay').classList.add('flex');
+            
+            // Počkáme chvilku na zajištění bezproblémového bufferu všech videí a načtení framů
+            await new Promise(r => setTimeout(r, 600));
 
             const cStream = canvas.captureStream(state.fps); const aStream = mainAudioDest.stream;
             const tracks = [...cStream.getVideoTracks()];
             if (aStream.getAudioTracks().length) tracks.push(...aStream.getAudioTracks());
             const mixedStream = new MediaStream(tracks);
             
-            try { mediaRecorder = new MediaRecorder(mixedStream, { mimeType: 'video/webm; codecs=vp9,opus' }); } 
-            catch(e) { mediaRecorder = new MediaRecorder(mixedStream); }
+            try { 
+                mediaRecorder = new MediaRecorder(mixedStream, { mimeType: 'video/webm; codecs=vp9,opus', videoBitsPerSecond: 10000000 }); 
+            } catch(e) { 
+                try { mediaRecorder = new MediaRecorder(mixedStream, { mimeType: 'video/webm; codecs=vp8,opus' }); }
+                catch (e2) { mediaRecorder = new MediaRecorder(mixedStream); }
+            }
 
             exportChunks = []; mediaRecorder.ondataavailable = e => { if(e.data.size > 0) exportChunks.push(e.data); };
             mediaRecorder.onstop = saveExportedFile;
 
-            document.getElementById('export-overlay').classList.remove('hidden'); document.getElementById('export-overlay').classList.add('flex');
-            state.isExporting = true; mediaRecorder.start(100); state.isPlaying = true; 
+            state.isExporting = true; 
+            state.isPlaying = true; 
+            lastTimestamp = performance.now(); // Reset času aby nevznikla díra
+            mediaRecorder.start(100); 
         }
 
         function updateExportUI() {
@@ -1018,7 +1077,8 @@
         }
 
         function finishExport() {
-            state.isExporting = false; state.isPlaying = false; mediaRecorder.stop();
+            state.isExporting = false; state.isPlaying = false; 
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
             state.clips.forEach(c => c.element && !c.element.paused && c.element.pause());
             document.getElementById('export-overlay').classList.add('hidden'); document.getElementById('export-overlay').classList.remove('flex');
             showToast("Zpracovávám soubor...");
@@ -1036,7 +1096,7 @@
             if (exportChunks.length === 0) return;
             const blob = new Blob(exportChunks, { type: mediaRecorder.mimeType || 'video/webm' });
             const url = URL.createObjectURL(blob); const a = document.createElement('a');
-            a.href = url; a.download = `Export_${Date.now()}.webm`; a.click(); showToast("Video úspěšně uloženo!");
+            a.href = url; a.download = `Export_ProEditor_${Date.now()}.webm`; a.click(); showToast("Video úspěšně uloženo!");
         }
 
         function formatTime(sec, detailed = false) {
